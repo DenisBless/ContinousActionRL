@@ -59,6 +59,7 @@ class Actor(torch.nn.Module):
         action_log_prob = self.get_log_prob(action_sample, mean, std)
         return action_sample, action_log_prob
 
+
     def action_sample(self, mean, std):
         eps = Normal(loc=torch.zeros_like(mean), scale=torch.ones_like(std)).sample()
         sample = std * eps + mean

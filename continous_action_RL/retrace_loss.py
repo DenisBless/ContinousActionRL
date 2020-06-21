@@ -71,13 +71,14 @@ class Retrace(torch.nn.Module):
                           behaviour_policy_probs,
                           gamma=0.99):
 
+        B = Q.shape[0]  # batch size
         trajectory_length = Q.shape[1]
-        Q_ret = torch.zeros(trajectory_length)
+        Q_ret = torch.zeros(B, trajectory_length)
         for i in range(trajectory_length):
             for j in range(i, trajectory_length):
                 c_k = self.calc_retrace_weights(target_policy_probs, behaviour_policy_probs)
-                delta = expected_target_Q[:, i] - target_Q[:, j]
-                Q_ret[i] = (gamma ** (j - i) * torch.prod(c_k[:, i:j])) * (rewards[:, j] + delta)
+                delta = expected_target_Q[i] - target_Q[:, j]
+                Q_ret[:, i] = (gamma ** (j - i) * torch.prod(c_k[:, i:j])) * (rewards[:, j] + delta)
 
         return F.mse_loss(Q, Q_ret)
 
@@ -108,7 +109,8 @@ class Retrace(torch.nn.Module):
 
         return F.mse_loss(target, Q_t)
 
-    def calc_retrace_weights(self, target_policy_probs, behaviour_policy_probs):
+    @staticmethod
+    def calc_retrace_weights(target_policy_probs, behaviour_policy_probs):
         return (target_policy_probs / behaviour_policy_probs.clamp(min=1e-10)).clamp(max=1)
         # return torch.ones_like(target_policy_probs)
 

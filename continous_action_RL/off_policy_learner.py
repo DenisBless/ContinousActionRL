@@ -1,9 +1,7 @@
 import copy
 
 import torch
-import torch.nn.functional as F
-import numpy as np
-from continous_action_RL.loss_fn import ActorLoss
+from continous_action_RL.actor_loss import ActorLoss
 from continous_action_RL.retrace_loss import Retrace
 from continous_action_RL.utils import Utils
 
@@ -40,7 +38,7 @@ class OffPolicyLearner:
 
         self.actor_loss = ActorLoss()
         self.critic_loss = Retrace()
-        # self.critic_loss = torch.nn.MSELoss()
+
         # torch.autograd.set_detect_anomaly(True)
 
     def learn(self, replay_buffer):
@@ -54,47 +52,41 @@ class OffPolicyLearner:
                                            num_obs=self.num_obs,
                                            num_actions=self.num_actions)
 
+                # Critic update
                 Q = self.critic.forward(action_batch, state_batch)
                 target_Q = self.target_critic.forward(action_batch, state_batch)
-                actions, action_log_prob = self.target_actor.forward(state_batch)
-                expected_target_Q = self.target_critic.forward(actions.unsqueeze(2), state_batch).squeeze(-1).mean(
+                target_actions, target_action_log_prob = self.target_actor.forward(state_batch)
+                expected_target_Q = self.target_critic.forward(target_actions.unsqueeze(2), state_batch).squeeze(-1).mean(
                     dim=0)
 
-                rewards_t = reward_batch[:, :-1, :].squeeze(-1)
-                Q_t = Q[:, :-1, :].squeeze(-1)
-                Q_next_t = Q[:, 1:, :].squeeze(-1)
-                target_Q_t = target_Q[:, :-1, :].squeeze(-1)
-                target_Q_next_t = target_Q[:, 1:, :].squeeze(-1)
-                action_log_prob_t = action_log_prob[:, :-1]
-
-                # Critic update
                 self.actor.eval()
                 self.critic.train()
                 self.critic_opt.zero_grad()
-                # TODO the last reward is VERY important, we thus need to have the state_T+1
-                # TD_target = rewards_t + self.discount_factor * target_Q_next_t
                 critic_loss = self.critic_loss.forward(Q=Q.squeeze(-1),
                                                        expected_target_Q=expected_target_Q,
                                                        target_Q=target_Q.squeeze(-1),
                                                        rewards=reward_batch.squeeze(-1),
-                                                       target_policy_probs=torch.exp(action_log_prob),
-                                                       behaviour_policy_probs=action_prob_batch)
+                                                       target_policy_probs=torch.exp(target_action_log_prob),
+                                                       behaviour_policy_probs=torch.exp(action_prob_batch.squeeze(-1)))
 
                 critic_loss.backward(retain_graph=True)
                 self.critic_opt.step()
 
                 # Actor update
+                actions, action_log_prob = self.actor.forward(state_batch)
+                # Q_ = self.critic.forward(actions.unsqueeze(2), state_batch).detach()
+                # todo detach Q
+
                 self.actor.train()
                 self.critic.eval()
                 self.actor_opt.zero_grad()
-                actor_loss = - (advantage * action_log_prob_t).mean()
-                actor_loss.backward(retain_graph=True)
+                actor_loss = self.actor_loss.forward(Q.squeeze(-1).detach(), action_log_prob)
+                actor_loss.backward()
                 self.actor_opt.step()
 
                 print("actor_loss:", actor_loss.item())
                 print("critic_loss:", critic_loss.item())
                 print("reward:", torch.sum(reward_batch, dim=1)[-1].item())
-
 
             self.update_targnets()
 

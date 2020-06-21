@@ -45,3 +45,5 @@ if __name__ == '__main__':
         learner.learn(replay_buffer)
 
 # Todo: When using an environment with multiple continuous actions, we need to use a Multivariate Normal Dist.
+# Todo: How do we compute the expectations wrt to the policy?
+# Todo: do we detach the action and action probs when
