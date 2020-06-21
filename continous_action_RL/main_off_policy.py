@@ -1,7 +1,7 @@
 from continous_action_RL.actor_critic_networks import Actor, Critic
 from continous_action_RL.replay_buffer import *
 from continous_action_RL.actor import Actor as Sampler
-from continous_action_RL.learner import Learner
+from continous_action_RL.off_policy_learner import OffPolicyLearner
 import gym
 
 if __name__ == '__main__':
@@ -36,13 +36,12 @@ if __name__ == '__main__':
                       replay_buffer=replay_buffer,
                       render=False)
 
-    learner = Learner(actor=actor,
-                      critic=critic,
-                      trajectory_length=trajectory_length)
+    learner = OffPolicyLearner(actor=actor,
+                               critic=critic,
+                               trajectory_length=trajectory_length)
 
     for _ in range(100):
         sampler.collect_trajectories()
         learner.learn(replay_buffer)
-
 
 # Todo: When using an environment with multiple continuous actions, we need to use a Multivariate Normal Dist.

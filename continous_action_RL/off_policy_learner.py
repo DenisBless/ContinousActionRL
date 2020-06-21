@@ -8,7 +8,7 @@ from continous_action_RL.loss_fn import Retrace
 from continous_action_RL.utils import Utils
 
 
-class Learner:
+class OffPolicyLearner:
     def __init__(self,
                  actor,
                  critic,
@@ -59,6 +59,7 @@ class Learner:
 
                 rewards_t = reward_batch[:, :-1, :].squeeze(-1)
                 Q_t = Q[:, :-1, :].squeeze(-1)
+                Q_next_t = Q[:, 1:, :].squeeze(-1)
                 target_Q_t = target_Q[:, :-1, :].squeeze(-1)
                 target_Q_next_t = target_Q[:, 1:, :].squeeze(-1)
                 action_log_prob_t = action_log_prob[:, :-1]
@@ -71,21 +72,21 @@ class Learner:
                 TD_target = rewards_t + self.discount_factor * target_Q_next_t
                 critic_loss = F.mse_loss(TD_target.squeeze(-1), Q_t.squeeze(-1))
                 critic_loss.backward(retain_graph=True)
- 
+                self.critic_opt.step()
+
                 # Actor update
                 self.actor.train()
                 self.critic.eval()
                 self.actor_opt.zero_grad()
-                advantage = rewards_t + self.discount_factor * target_Q_next_t - target_Q_t
+                advantage = rewards_t + self.discount_factor * Q_next_t.detach() - Q_t.detach()
                 actor_loss = - (advantage * action_log_prob_t).mean()
                 actor_loss.backward(retain_graph=True)
+                self.actor_opt.step()
 
                 print("actor_loss:", actor_loss.item())
                 print("critic_loss:", critic_loss.item())
                 print("reward:", torch.sum(reward_batch, dim=1)[-1].item())
 
-                self.critic_opt.step()
-                self.actor_opt.step()
 
             self.update_targnets()
 

@@ -1,5 +1,7 @@
 import torch
 
+from continous_action_RL.utils import Utils
+
 
 class Actor:
     def __init__(self,
@@ -12,8 +14,8 @@ class Actor:
         self.env = env
         self.num_trajectories = num_trajectories
         self.actor_network = actor_network
-        self.replay_buffer = replay_buffer
         self.render = render
+        self.replay_buffer = replay_buffer
 
     def collect_trajectories(self):
         for i in range(self.num_trajectories):
