@@ -40,7 +40,7 @@ class Learner:
 
         self.actor_loss = ActorLoss()
         self.critic_loss = torch.nn.MSELoss()
-        self.test = Retrace()
+        # torch.autograd.set_detect_anomaly(True)
 
     def learn(self, replay_buffer):
         for _ in range(self.num_training_iter):
@@ -55,23 +55,30 @@ class Learner:
 
                 Q = self.critic.forward(action_batch, state_batch)
                 target_Q = self.target_critic.forward(action_batch, state_batch)
-                target_policy_probs = self.target_actor.action_prob(action_batch, state_batch)
+                _, action_log_prob = self.actor.forward(state_batch)
+
+                rewards_t = reward_batch[:, :-1, :].squeeze(-1)
+                Q_t = Q[:, :-1, :].squeeze(-1)
+                target_Q_t = target_Q[:, :-1, :].squeeze(-1)
+                target_Q_next_t = target_Q[:, 1:, :].squeeze(-1)
+                action_log_prob_t = action_log_prob[:, :-1]
 
                 # Critic update
                 self.actor.eval()
                 self.critic.train()
                 self.critic_opt.zero_grad()
                 # TODO the last reward is VERY important, we thus need to have the state_T+1
-                TD_target = reward_batch[:, :-1, :] + self.discount_factor * target_Q[:, 1:, :]
-                critic_loss = F.mse_loss(TD_target.squeeze(-1), Q[:, :-1, :].squeeze(-1))
+                TD_target = rewards_t + self.discount_factor * target_Q_next_t
+                critic_loss = F.mse_loss(TD_target.squeeze(-1), Q_t.squeeze(-1))
                 critic_loss.backward(retain_graph=True)
  
                 # Actor update
                 self.actor.train()
                 self.critic.eval()
                 self.actor_opt.zero_grad()
-                actor_loss = self.actor_loss.forward(Q)
-                actor_loss.backward()
+                advantage = rewards_t + self.discount_factor * target_Q_next_t - target_Q_t
+                actor_loss = - (advantage * action_log_prob_t).mean()
+                actor_loss.backward(retain_graph=True)
 
                 print("actor_loss:", actor_loss.item())
                 print("critic_loss:", critic_loss.item())

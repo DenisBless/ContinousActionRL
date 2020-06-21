@@ -24,8 +24,8 @@ if __name__ == '__main__':
     actor = Actor(num_actions=num_actions,
                   num_obs=num_obs,
                   mean_scale=2,
-                  var_low=0.01,
-                  var_high=1,
+                  std_low=0.01,
+                  std_high=1,
                   action_bound=(-2, 2))
 
     critic = Critic(num_actions=num_actions, num_obs=num_obs)

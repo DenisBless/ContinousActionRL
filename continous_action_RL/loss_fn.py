@@ -5,8 +5,8 @@ class ActorLoss(torch.nn.Module):
     def __init__(self):
         super(ActorLoss, self).__init__()
 
-    def forward(self, Q):
-        return - torch.mean(Q)
+    def forward(self, advantage, action_log_probs):
+        return - (advantage * action_log_probs).mean()
 
 
 class Retrace(torch.nn.Module):
