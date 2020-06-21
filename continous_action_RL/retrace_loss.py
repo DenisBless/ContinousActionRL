@@ -8,7 +8,7 @@ class Retrace(torch.nn.Module):
 
     def forward(self,
                 Q,
-                expected_Q,
+                expected_target_Q,
                 target_Q,
                 rewards,
                 target_policy_probs,
@@ -23,7 +23,7 @@ class Retrace(torch.nn.Module):
             Q: State-Action values.
             Torch tensor with shape `[B, (T+1)]`
 
-            expected_Q: 𝔼_π Q(s_t,.) (from the fixed policy)
+            expected_target_Q: 𝔼_π Q(s_t,.) (from the fixed critic network)
             Torch tensor with shape `[B, (T+1)]`
 
             target_Q: State-Action values from target network.
@@ -46,7 +46,7 @@ class Retrace(torch.nn.Module):
         """
         if recursiv:
             return self.retrace_recursive(Q=Q,
-                                          expected_Q=expected_Q,
+                                          expected_target_Q=expected_target_Q,
                                           target_Q=target_Q,
                                           rewards=rewards,
                                           target_policy_probs=target_policy_probs,
@@ -55,17 +55,35 @@ class Retrace(torch.nn.Module):
 
         else:
             return self.retrace_iterative(Q=Q,
-                                          expected_Q=expected_Q,
+                                          expected_target_Q=expected_target_Q,
                                           target_Q=target_Q,
                                           rewards=rewards,
                                           target_policy_probs=target_policy_probs,
                                           behaviour_policy_probs=behaviour_policy_probs,
                                           gamma=gamma)
 
+    def retrace_iterative(self,
+                          Q,
+                          expected_target_Q,
+                          target_Q,
+                          rewards,
+                          target_policy_probs,
+                          behaviour_policy_probs,
+                          gamma=0.99):
+
+        trajectory_length = Q.shape[1]
+        Q_ret = torch.zeros(trajectory_length)
+        for i in range(trajectory_length):
+            for j in range(i, trajectory_length):
+                c_k = self.calc_retrace_weights(target_policy_probs, behaviour_policy_probs)
+                delta = expected_target_Q[:, i] - target_Q[:, j]
+                Q_ret[i] = (gamma ** (j - i) * torch.prod(c_k[:, i:j])) * (rewards[:, j] + delta)
+
+        return F.mse_loss(Q, Q_ret)
 
     def retrace_recursive(self,
                           Q,
-                          expected_Q,
+                          expected_target_Q,
                           target_Q,
                           rewards,
                           target_policy_probs,
@@ -76,7 +94,7 @@ class Retrace(torch.nn.Module):
         r_t = rewards[:, :-1]
         Q_t = Q[:, :-1]
         target_Q_t = target_Q[:, :-1]
-        expected_Q_next_t = expected_Q[:, 1:]
+        expected_Q_next_t = expected_target_Q[:, 1:]
 
         c_next_t = self.calc_retrace_weights(target_policy_probs, behaviour_policy_probs)[:, 1:]
 
@@ -89,16 +107,6 @@ class Retrace(torch.nn.Module):
         target = self.reverse_sequence(target_rev, B)
 
         return F.mse_loss(target, Q_t)
-
-    def retrace_iterative(self,
-                          Q,
-                          expected_Q,
-                          target_Q,
-                          rewards,
-                          target_policy_probs,
-                          behaviour_policy_probs,
-                          gamma=0.99):
-        ...
 
     def calc_retrace_weights(self, target_policy_probs, behaviour_policy_probs):
         return (target_policy_probs / behaviour_policy_probs.clamp(min=1e-10)).clamp(max=1)

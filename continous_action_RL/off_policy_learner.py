@@ -57,7 +57,8 @@ class OffPolicyLearner:
                 Q = self.critic.forward(action_batch, state_batch)
                 target_Q = self.target_critic.forward(action_batch, state_batch)
                 actions, action_log_prob = self.target_actor.forward(state_batch)
-                expected_Q = self.critic.forward(actions.unsqueeze(2), state_batch).squeeze(-1).mean(dim=0)
+                expected_target_Q = self.target_critic.forward(actions.unsqueeze(2), state_batch).squeeze(-1).mean(
+                    dim=0)
 
                 rewards_t = reward_batch[:, :-1, :].squeeze(-1)
                 Q_t = Q[:, :-1, :].squeeze(-1)
@@ -73,7 +74,7 @@ class OffPolicyLearner:
                 # TODO the last reward is VERY important, we thus need to have the state_T+1
                 # TD_target = rewards_t + self.discount_factor * target_Q_next_t
                 critic_loss = self.critic_loss.forward(Q=Q.squeeze(-1),
-                                                       expected_Q=expected_Q,
+                                                       expected_target_Q=expected_target_Q,
                                                        target_Q=target_Q.squeeze(-1),
                                                        rewards=reward_batch.squeeze(-1),
                                                        target_policy_probs=torch.exp(action_log_prob),
