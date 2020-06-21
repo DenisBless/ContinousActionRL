@@ -4,7 +4,7 @@ import torch
 import torch.nn.functional as F
 import numpy as np
 from continous_action_RL.loss_fn import ActorLoss
-from continous_action_RL.loss_fn import Retrace
+from continous_action_RL.retrace_loss import Retrace
 from continous_action_RL.utils import Utils
 
 
@@ -39,7 +39,8 @@ class OffPolicyLearner:
         self.num_obs = actor.num_obs
 
         self.actor_loss = ActorLoss()
-        self.critic_loss = torch.nn.MSELoss()
+        self.critic_loss = Retrace()
+        # self.critic_loss = torch.nn.MSELoss()
         # torch.autograd.set_detect_anomaly(True)
 
     def learn(self, replay_buffer):
@@ -55,7 +56,8 @@ class OffPolicyLearner:
 
                 Q = self.critic.forward(action_batch, state_batch)
                 target_Q = self.target_critic.forward(action_batch, state_batch)
-                _, action_log_prob = self.actor.forward(state_batch)
+                actions, action_log_prob = self.target_actor.forward(state_batch)
+                expected_Q = self.critic.forward(actions.unsqueeze(2), state_batch).squeeze(-1).mean(dim=0)
 
                 rewards_t = reward_batch[:, :-1, :].squeeze(-1)
                 Q_t = Q[:, :-1, :].squeeze(-1)
@@ -69,8 +71,14 @@ class OffPolicyLearner:
                 self.critic.train()
                 self.critic_opt.zero_grad()
                 # TODO the last reward is VERY important, we thus need to have the state_T+1
-                TD_target = rewards_t + self.discount_factor * target_Q_next_t
-                critic_loss = F.mse_loss(TD_target.squeeze(-1), Q_t.squeeze(-1))
+                # TD_target = rewards_t + self.discount_factor * target_Q_next_t
+                critic_loss = self.critic_loss.forward(Q=Q.squeeze(-1),
+                                                       expected_Q=expected_Q,
+                                                       target_Q=target_Q.squeeze(-1),
+                                                       rewards=reward_batch.squeeze(-1),
+                                                       target_policy_probs=torch.exp(action_log_prob),
+                                                       behaviour_policy_probs=action_prob_batch)
+
                 critic_loss.backward(retain_graph=True)
                 self.critic_opt.step()
 
@@ -78,7 +86,6 @@ class OffPolicyLearner:
                 self.actor.train()
                 self.critic.eval()
                 self.actor_opt.zero_grad()
-                advantage = rewards_t + self.discount_factor * Q_next_t.detach() - Q_t.detach()
                 actor_loss = - (advantage * action_log_prob_t).mean()
                 actor_loss.backward(retain_graph=True)
                 self.actor_opt.step()

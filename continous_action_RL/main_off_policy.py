@@ -16,7 +16,7 @@ if __name__ == '__main__':
     env = gym.make("Pendulum-v0")
     num_obs = env.observation_space.shape[0]
     num_actions = env.action_space.shape[0]
-    num_trajectories = 100
+    num_trajectories = 10
     trajectory_length = 200  # environment dependent
 
     # Fill the replay buffer
