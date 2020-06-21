@@ -14,7 +14,7 @@ class Retrace(torch.nn.Module):
                 target_policy_probs,
                 behaviour_policy_probs,
                 gamma=0.99,
-                recursiv=False):
+                recursive=False):
         """
         Reimplementation of Retrace ((http://arxiv.org/abs/1606.02647)) loss from
         Deepmind (https://github.com/deepmind/trfl/blob/master/trfl/retrace_ops.py?l=45) in PyTorch.
@@ -44,7 +44,7 @@ class Retrace(torch.nn.Module):
             Loss
 
         """
-        if recursiv:
+        if recursive:
             return self.retrace_recursive(Q=Q,
                                           expected_target_Q=expected_target_Q,
                                           target_Q=target_Q,
@@ -90,6 +90,7 @@ class Retrace(torch.nn.Module):
                           target_policy_probs,
                           behaviour_policy_probs,
                           gamma=0.99):
+
         B = Q.shape[0]
         # We have Q, target_Q, rewards
         r_t = rewards[:, :-1]
@@ -112,7 +113,6 @@ class Retrace(torch.nn.Module):
     @staticmethod
     def calc_retrace_weights(target_policy_probs, behaviour_policy_probs):
         return (target_policy_probs / behaviour_policy_probs.clamp(min=1e-10)).clamp(max=1)
-        # return torch.ones_like(target_policy_probs)
 
     @staticmethod
     def reverse_sequence(sequence, num_sequences, dim=0):

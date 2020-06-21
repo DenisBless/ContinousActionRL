@@ -70,20 +70,23 @@ class OffPolicyLearner:
                                                        behaviour_policy_probs=torch.exp(action_prob_batch.squeeze(-1)))
 
                 critic_loss.backward(retain_graph=True)
-                self.critic_opt.step()
 
                 # Actor update
+                # Todo: Is this necessary or do we use the action / action probs from the buffer?
                 actions, action_log_prob = self.actor.forward(state_batch)
                 # Q_ = self.critic.forward(actions.unsqueeze(2), state_batch).detach()
-                # todo detach Q
 
                 self.actor.train()
                 self.critic.eval()
                 self.actor_opt.zero_grad()
-                actor_loss = self.actor_loss.forward(Q.squeeze(-1).detach(), action_log_prob)
+                actor_loss = self.actor_loss.forward(Q.squeeze(-1), action_log_prob)
+                # actor_loss = self.actor_loss.forward(Q.squeeze(-1), action_prob_batch.squeeze(-1))
                 actor_loss.backward()
+
+                self.critic_opt.step()
                 self.actor_opt.step()
 
+                print("-" * 30)
                 print("actor_loss:", actor_loss.item())
                 print("critic_loss:", critic_loss.item())
                 print("reward:", torch.sum(reward_batch, dim=1)[-1].item())

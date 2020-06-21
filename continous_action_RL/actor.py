@@ -41,4 +41,5 @@ class Actor:
             rewards = torch.stack(rewards)
             action_log_probs = torch.stack(action_log_probs)
 
+            # self.replay_buffer.push(states, actions, rewards, action_log_probs)
             self.replay_buffer.push(states, actions.detach(), rewards, action_log_probs.detach())

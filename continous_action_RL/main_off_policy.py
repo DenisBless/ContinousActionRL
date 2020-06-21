@@ -16,11 +16,11 @@ if __name__ == '__main__':
     env = gym.make("Pendulum-v0")
     num_obs = env.observation_space.shape[0]
     num_actions = env.action_space.shape[0]
-    num_trajectories = 10
+    num_trajectories = 150
     trajectory_length = 200  # environment dependent
 
     # Fill the replay buffer
-    replay_buffer = ReplayBuffer(1000)
+    replay_buffer = ReplayBuffer(5000)
     actor = Actor(num_actions=num_actions,
                   num_obs=num_obs,
                   mean_scale=2,
@@ -38,9 +38,13 @@ if __name__ == '__main__':
 
     learner = OffPolicyLearner(actor=actor,
                                critic=critic,
-                               trajectory_length=trajectory_length)
+                               trajectory_length=trajectory_length,
+                               actor_lr=2.5e-4,
+                               critic_lr=2.5e-4,
+                               update_targnets_every=10,
+                               minibatch_size=32)
 
-    for _ in range(100):
+    for _ in range(1000):
         sampler.collect_trajectories()
         learner.learn(replay_buffer)
 

@@ -55,10 +55,10 @@ class Actor(torch.nn.Module):
         x = self.output(x)
         x = F.tanh(x)
         mean, std = self.get_normal_params(x)
-        action_sample = self.action_sample(mean, std).detach()
+        # action_sample = self.action_sample(mean, std).detach()
+        action_sample = self.action_sample(mean, std)
         action_log_prob = self.get_log_prob(action_sample, mean, std)
         return action_sample, action_log_prob
-
 
     def action_sample(self, mean, std):
         eps = Normal(loc=torch.zeros_like(mean), scale=torch.ones_like(std)).sample()
@@ -75,7 +75,6 @@ class Actor(torch.nn.Module):
         return mean, std
 
     def get_log_prob(self, action_sample, mean, std):
-        t1 = - ((mean - action_sample)**2) / (2 * std**2)
+        t1 = - ((mean - action_sample) ** 2) / (2 * std ** 2)
         t2 = - torch.sqrt(torch.tensor(2 * np.pi, dtype=torch.float) * std)
         return t1 + t2
-
