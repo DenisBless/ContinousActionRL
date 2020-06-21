@@ -23,7 +23,7 @@ if __name__ == '__main__':
     replay_buffer = ReplayBuffer(5000)
     actor = Actor(num_actions=num_actions,
                   num_obs=num_obs,
-                  mean_scale=2,
+                  mean_scale=1,
                   std_low=0.01,
                   std_high=1,
                   action_bound=(-2, 2))
@@ -34,7 +34,7 @@ if __name__ == '__main__':
                       num_trajectories=num_trajectories,
                       actor_network=actor,
                       replay_buffer=replay_buffer,
-                      render=False)
+                      render=True)
 
     learner = OffPolicyLearner(actor=actor,
                                critic=critic,
@@ -47,6 +47,7 @@ if __name__ == '__main__':
     for _ in range(1000):
         sampler.collect_trajectories()
         learner.learn(replay_buffer)
+
 
 # Todo: When using an environment with multiple continuous actions, we need to use a Multivariate Normal Dist.
 # Todo: How do we compute the expectations wrt to the policy?
