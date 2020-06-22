@@ -55,7 +55,11 @@ class OffPolicyLearner:
                 # Critic update
                 Q = self.critic.forward(action_batch, state_batch)
                 target_Q = self.target_critic.forward(action_batch, state_batch)
+
+                # a ~ π_target(•|s_t), log(π_target(a|s)
                 target_actions, target_action_log_prob = self.target_actor.forward(state_batch)
+
+                # 𝔼_π_target [Q(s_t,•)] with actions from π_target
                 expected_target_Q = self.target_critic.forward(target_actions.unsqueeze(2), state_batch).squeeze(-1).mean(
                     dim=0)
 

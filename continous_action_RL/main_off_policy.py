@@ -51,4 +51,6 @@ if __name__ == '__main__':
 
 # Todo: When using an environment with multiple continuous actions, we need to use a Multivariate Normal Dist.
 # Todo: How do we compute the expectations wrt to the policy?
-# Todo: do we detach the action and action probs when sampling?
+# Todo: Do we detach the action and action probs when sampling?
+# Todo: The delta in the retrace loss in LbP paper is computed between "i" and "j". In the original paper it os
+#  computed between "i" and "i + 1". Which one is correct?
