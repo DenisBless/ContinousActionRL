@@ -16,8 +16,7 @@ class Retrace(torch.nn.Module):
                 gamma=0.99,
                 recursive=False):
         """
-        Reimplementation of Retrace ((http://arxiv.org/abs/1606.02647)) loss from
-        Deepmind (https://github.com/deepmind/trfl/blob/master/trfl/retrace_ops.py?l=45) in PyTorch.
+        Implementation of Retrace ((http://arxiv.org/abs/1606.02647)) loss in PyTorch.
 
         Args:
             Q: State-Action values.
