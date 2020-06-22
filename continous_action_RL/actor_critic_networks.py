@@ -47,7 +47,7 @@ class Actor(torch.nn.Module):
         self.hidden = torch.nn.Linear(hidden_size1, hidden_size2)
         self.output = torch.nn.Linear(hidden_size2, 2 * num_actions)
 
-    def forward(self, observation):
+    def forward(self, observation, num_samples=1):
         x = self.input(observation)
         x = F.elu(x)
         x = self.hidden(x)
@@ -56,14 +56,36 @@ class Actor(torch.nn.Module):
         x = F.tanh(x)
         mean, std = self.get_normal_params(x)
         # action_sample = self.action_sample(mean, std).detach()
-        action_sample = self.action_sample(mean, std)
-        action_log_prob = self.get_log_prob(action_sample, mean, std)
+        action_sample,  action_log_prob = self.action_sample(mean, std, num_samples)
+        # action_log_prob = self.get_log_prob(action_sample, mean, std)
         return action_sample, action_log_prob
 
-    def action_sample(self, mean, std):
-        eps = Normal(loc=torch.zeros_like(mean), scale=torch.ones_like(std)).sample()
-        sample = std * eps + mean
-        return sample if self.action_bound is None else sample.clamp(min=self.action_bound[0], max=self.action_bound[1])
+    # def action_sample(self, mean, std, num_samples=1):
+    #     sample = torch.zeros_like(mean)
+    #     for i in range(num_samples):
+    #         eps = Normal(loc=torch.zeros_like(mean), scale=torch.ones_like(std)).sample()
+    #         sample += std * eps + mean
+    #
+    #     if self.action_bound:
+    #         return (sample / num_samples).clamp(min=self.action_bound[0], max=self.action_bound[1])
+    #     else:
+    #         return sample / num_samples
+
+    def action_sample(self, mean, std, num_samples=1):
+        sample_mean = torch.zeros_like(mean)
+        log_probs = torch.zeros_like(mean)
+
+        for i in range(num_samples):
+            eps = Normal(loc=torch.zeros_like(mean), scale=torch.ones_like(std)).sample()
+            action_sample = std * eps + mean
+            sample_mean += action_sample
+            log_probs += self.get_log_prob(action_sample, mean, std)
+
+        if self.action_bound:
+            return (sample_mean / num_samples).clamp(min=self.action_bound[0], max=self.action_bound[1]), log_probs /\
+                   num_samples
+        else:
+            return sample_mean / num_samples, log_probs / num_samples
 
     def get_normal_params(self, x):
         # mean is between [-mean_scale, mean_scale]

@@ -1,6 +1,6 @@
 from continous_action_RL.actor_critic_networks import Actor, Critic
 from continous_action_RL.replay_buffer import *
-from continous_action_RL.actor import Actor as Sampler
+from continous_action_RL.sampler import Actor as Sampler
 from continous_action_RL.on_policy_learner import OnPolicyLearner
 import gym
 

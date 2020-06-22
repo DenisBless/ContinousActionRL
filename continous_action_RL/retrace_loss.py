@@ -40,8 +40,7 @@ class Retrace(torch.nn.Module):
             gamma: Discount factor
 
         Returns:
-            Loss
-
+            Retrace loss
         """
         if recursive:
             return self.retrace_recursive(Q=Q,
@@ -69,14 +68,27 @@ class Retrace(torch.nn.Module):
                           target_policy_probs,
                           behaviour_policy_probs,
                           gamma=0.99):
+        """
+        For information on the parameters see class docs.
+
+        Computes the retrace loss according to
+        L = 𝔼_τ[(Q - Q_ret)^2]
+        Q_ret = ∑_j=i γ^(j-i) * (Π_k=i^j c_k) * (r(s_j, a_j) + δ(s_i, s_j))
+        δ(s_i, s_j) = 𝔼_π_target [Q(s_i,•)] - Q_π_target(s_j,a_j)
+        c_k = min(1, π_target(a_k|s_k) / b(a_k|s_k))
+
+        Returns:
+            Current value for the critic loss.
+        """
 
         B = Q.shape[0]  # batch size
         trajectory_length = Q.shape[1]
         Q_ret = torch.zeros(B, trajectory_length)
-        for i in range(trajectory_length):
-            for j in range(i, trajectory_length):
+        for i in range(trajectory_length - 1):
+            for j in range(i, trajectory_length - 1):
                 c_k = self.calc_retrace_weights(target_policy_probs, behaviour_policy_probs)
-                delta = expected_target_Q[i] - target_Q[:, j]
+                # delta = gamma * expected_target_Q[:, i] - target_Q[:, j]
+                delta = gamma * expected_target_Q[:, j + 1] - target_Q[:, j]
                 Q_ret[:, i] += (gamma ** (j - i) * torch.prod(c_k[:, i:j])) * (rewards[:, j] + delta)
 
         return F.mse_loss(Q, Q_ret)

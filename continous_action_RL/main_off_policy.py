@@ -1,6 +1,7 @@
 from continous_action_RL.actor_critic_networks import Actor, Critic
 from continous_action_RL.replay_buffer import *
-from continous_action_RL.actor import Actor as Sampler
+from continous_action_RL.sampler import Sampler
+from continous_action_RL.logger import Logger
 from continous_action_RL.off_policy_learner import OffPolicyLearner
 import gym
 
@@ -18,9 +19,12 @@ if __name__ == '__main__':
     num_actions = env.action_space.shape[0]
     num_trajectories = 150
     trajectory_length = 200  # environment dependent
+    log_dir = "/logs/"
 
-    # Fill the replay buffer
-    replay_buffer = ReplayBuffer(5000)
+    replay_buffer = ReplayBuffer(1500)
+
+    logger = Logger(log_every=10)
+
     actor = Actor(num_actions=num_actions,
                   num_obs=num_obs,
                   mean_scale=1,
@@ -34,20 +38,21 @@ if __name__ == '__main__':
                       num_trajectories=num_trajectories,
                       actor_network=actor,
                       replay_buffer=replay_buffer,
-                      render=False)
+                      render=False,
+                      logger=logger)
 
     learner = OffPolicyLearner(actor=actor,
                                critic=critic,
                                trajectory_length=trajectory_length,
                                actor_lr=2.5e-4,
                                critic_lr=2.5e-4,
-                               update_targnets_every=10,
-                               minibatch_size=32)
+                               update_targnets_every=20,
+                               minibatch_size=32,
+                               logger=logger)
 
-    for _ in range(1000):
+    for _ in range(5000):
         sampler.collect_trajectories()
         learner.learn(replay_buffer)
-
 
 # Todo: When using an environment with multiple continuous actions, we need to use a Multivariate Normal Dist.
 # Todo: How do we compute the expectations wrt to the policy?
