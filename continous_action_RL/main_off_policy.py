@@ -34,7 +34,7 @@ if __name__ == '__main__':
                       num_trajectories=num_trajectories,
                       actor_network=actor,
                       replay_buffer=replay_buffer,
-                      render=True)
+                      render=False)
 
     learner = OffPolicyLearner(actor=actor,
                                critic=critic,
@@ -51,4 +51,4 @@ if __name__ == '__main__':
 
 # Todo: When using an environment with multiple continuous actions, we need to use a Multivariate Normal Dist.
 # Todo: How do we compute the expectations wrt to the policy?
-# Todo: do we detach the action and action probs when
+# Todo: do we detach the action and action probs when sampling?

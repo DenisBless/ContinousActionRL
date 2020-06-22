@@ -8,6 +8,3 @@ class ActorLoss(torch.nn.Module):
 
     def forward(self, Q, action_log_prob):
         return - (Q + self.alpha * action_log_prob).mean()
-
-
-

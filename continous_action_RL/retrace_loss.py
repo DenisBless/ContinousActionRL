@@ -78,7 +78,7 @@ class Retrace(torch.nn.Module):
             for j in range(i, trajectory_length):
                 c_k = self.calc_retrace_weights(target_policy_probs, behaviour_policy_probs)
                 delta = expected_target_Q[i] - target_Q[:, j]
-                Q_ret[:, i] = (gamma ** (j - i) * torch.prod(c_k[:, i:j])) * (rewards[:, j] + delta)
+                Q_ret[:, i] += (gamma ** (j - i) * torch.prod(c_k[:, i:j])) * (rewards[:, j] + delta)
 
         return F.mse_loss(Q, Q_ret)
 
