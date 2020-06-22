@@ -55,7 +55,6 @@ class Actor(torch.nn.Module):
         x = self.output(x)
         x = F.tanh(x)
         mean, std = self.get_normal_params(x)
-        # action_sample = self.action_sample(mean, std).detach()
         action_sample,  action_log_prob = self.action_sample(mean, std, num_samples)
         # action_log_prob = self.get_log_prob(action_sample, mean, std)
         return action_sample, action_log_prob
@@ -72,6 +71,16 @@ class Actor(torch.nn.Module):
     #         return sample / num_samples
 
     def action_sample(self, mean, std, num_samples=1):
+        """
+        Computes 𝔼_π[log N(a|μ(x), σ(x)^2)], 𝔼_π[log N(a|μ(x), σ(x)^2)]
+        Args:
+            mean: μ(x)
+            std: σ(x)
+            num_samples: Number of samples to approximate the expectation
+
+        Returns:
+            a ~ π(•|s), log N(a|μ(x)
+        """
         sample_mean = torch.zeros_like(mean)
         log_probs = torch.zeros_like(mean)
 
@@ -82,12 +91,20 @@ class Actor(torch.nn.Module):
             log_probs += self.get_log_prob(action_sample, mean, std)
 
         if self.action_bound:
-            return (sample_mean / num_samples).clamp(min=self.action_bound[0], max=self.action_bound[1]), log_probs /\
-                   num_samples
+            return (sample_mean / num_samples).clamp(min=self.action_bound[0], max=self.action_bound[1]), \
+                   log_probs / num_samples
         else:
             return sample_mean / num_samples, log_probs / num_samples
 
     def get_normal_params(self, x):
+        """
+        Computes mean μ(x) and std σ(x) where x is the output of the neural network.
+        Args:
+            x: output of the neural network
+
+        Returns:
+            μ(x), σ(x)
+        """
         # mean is between [-mean_scale, mean_scale]
         mean = self.mean_scale * x[0] if x.dim() == 1 else x[:, :, 0]
 
@@ -97,6 +114,16 @@ class Actor(torch.nn.Module):
         return mean, std
 
     def get_log_prob(self, action_sample, mean, std):
+        """
+        Computes log N(a|μ(x), σ(x)^2) where a ~ π(•|s)
+        Args:
+            action_sample: a ~ π(•|s)
+            mean: μ
+            std: σ
+
+        Returns:
+            log N(a|μ, σ^2)
+        """
         t1 = - ((mean - action_sample) ** 2) / (2 * std ** 2)
         t2 = - torch.sqrt(torch.tensor(2 * np.pi, dtype=torch.float) * std)
         return t1 + t2

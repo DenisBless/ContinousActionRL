@@ -1,3 +1,4 @@
 /carl/
 *.ipynb
 !/tmp/
+*/runs
