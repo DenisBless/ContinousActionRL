@@ -64,11 +64,17 @@ class OffPolicyLearner:
                 # Q_target(a_t, s_t)
                 target_Q = self.target_critic.forward(action_batch, state_batch)
 
-                # a ~ π_target(•|s_t), log(π_target(a|s))
-                target_actions, target_action_log_prob = self.target_actor.forward(state_batch, num_samples=10)
+                # Compute 𝔼_π_target [Q(s_t,•)] with a ~ π_target(•|s_t), log(π_target(a|s))
+                expected_target_Q = torch.zeros_like(reward_batch)
+                mean, std = self.target_actor.forward(state_batch)
+                for _ in range(10):
+                    action_sample, _ = self.target_actor.action_sample(mean, std)
+                    expected_target_Q += self.target_critic.forward(action_sample.unsqueeze(-1), state_batch).squeeze(-1)
 
-                # 𝔼_π_target [Q(s_t,•)] with actions from π_target
-                expected_target_Q = self.target_critic.forward(target_actions.unsqueeze(2), state_batch).squeeze(-1)
+                expected_target_Q /= 10
+
+                # log(π_target(a_t | s_t))
+                target_action_log_prob = self.target_actor.get_log_prob(action_batch, mean, std)
 
                 # a ~ π(•|s_t), log(π(a|s))
                 actions, action_log_prob = self.actor.forward(state_batch)

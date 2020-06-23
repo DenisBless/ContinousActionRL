@@ -24,7 +24,8 @@ class Sampler:
             obs = torch.tensor(self.env.reset(), dtype=torch.float)
             done = False
             while not done:
-                action, action_log_prob = self.actor_network.forward(observation=obs)
+                mean, std = self.actor_network.forward(observation=obs)
+                action, action_log_prob = self.actor_network.action_sample(mean, std)
                 next_obs, reward, done, _ = self.env.step([action.item()])
                 next_obs, reward = torch.tensor(next_obs, dtype=torch.float), torch.tensor(reward, dtype=torch.float)
                 states.append(obs)
