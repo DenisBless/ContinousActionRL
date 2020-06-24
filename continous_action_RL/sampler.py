@@ -49,8 +49,8 @@ class Sampler:
             action_log_probs = torch.stack(action_log_probs).to(self.device)
 
             if self.logger is not None and i % self.logger.log_every == 0:
+                print(rewards.mean().item())
                 self.logger.add_scalar(scalar_value=rewards.mean(), tag="mean_reward")
-                self.logger.add_histogram(values=actions, tag="actions")
+                # self.logger.add_histogram(values=actions, tag="actions")
 
-            # self.replay_buffer.push(states, actions, rewards, action_log_probs)
             self.replay_buffer.push(states, actions.detach(), rewards, action_log_probs.detach())

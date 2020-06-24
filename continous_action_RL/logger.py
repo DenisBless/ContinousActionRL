@@ -3,7 +3,7 @@ from torch.utils.tensorboard import SummaryWriter
 
 
 class Logger(SummaryWriter):
-    def __init__(self, log_every=100, logdir=None):
+    def __init__(self, log_every=10, logdir=None):
         super(Logger, self).__init__(log_dir=logdir)
         self.log_every = log_every
 

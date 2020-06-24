@@ -14,8 +14,8 @@ class OffPolicyLearner:
                  discount_factor=0.99,
                  actor_lr=2e-4,
                  critic_lr=2e-4,
-                 num_training_iter=20,
-                 update_targnets_every=4,
+                 num_training_iter=100,
+                 update_targnets_every=20,
                  expectation_samples=10,
                  minibatch_size=8,
                  logger=None):
