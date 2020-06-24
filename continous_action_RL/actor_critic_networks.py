@@ -18,6 +18,10 @@ class Critic(torch.nn.Module):
         self.output = torch.nn.Linear(hidden_size2, 1)
 
     def forward(self, action, observation):
+        assert action.dim() == observation.dim(), \
+            "Error, dimension mismatch. Dimensions: " \
+            "action: " + str(action.dim()) + " observation: " + str(observation.dim())
+
         x = self.input(torch.cat((action, observation), dim=2))  # dim 2 are the input features
         x = F.elu(x)
         x = self.hidden(x)
@@ -55,8 +59,6 @@ class Actor(torch.nn.Module):
         x = self.output(x)
         x = F.tanh(x)
         mean, std = self.get_normal_params(x)
-        # action_sample,  action_log_prob = self.action_sample(mean, std)
-        # action_log_prob = self.get_log_prob(action_sample, mean, std)
         return mean, std
 
     # def action_sample(self, mean, std, num_samples=1):
@@ -76,7 +78,6 @@ class Actor(torch.nn.Module):
         Args:
             mean: μ(x)
             std: σ(x)
-            num_samples: Number of samples to approximate the expectation
 
         Returns:
             a ~ π(•|s), log N(a|μ(x)
@@ -102,10 +103,11 @@ class Actor(torch.nn.Module):
             μ(x), σ(x)
         """
         # mean is between [-mean_scale, mean_scale]
-        mean = self.mean_scale * x[0] if x.dim() == 1 else x[:, :, 0]
+        mid = x.shape[-1] // 2
+        mean = self.mean_scale * x[:mid] if x.dim() == 1 else x[:, :, :mid]
 
         # standard deviation is between [std_low, std_high]
-        std_unscaled = x[1] if x.dim() == 1 else x[:, :, 1]
+        std_unscaled = x[mid:] if x.dim() == 1 else x[:, :, mid:]
         std = (0.5 * (self.std_high - self.std_low)) * std_unscaled + 0.5 * (self.std_high + self.std_low)
         return mean, std
 
@@ -120,6 +122,10 @@ class Actor(torch.nn.Module):
         Returns:
             log N(a|μ, σ^2)
         """
+        assert action_sample.shape == mean.shape == std.shape, \
+            "Error, shape mismatch. Shapes: action_sample: " \
+            + str(action_sample.shape) + " mean: " + str(mean.shape) + " std: " + str(std.shape)
+
         t1 = - ((mean - action_sample) ** 2) / (2 * std ** 2)
         t2 = - torch.sqrt(torch.tensor(2 * np.pi, dtype=torch.float) * std)
         return t1 + t2

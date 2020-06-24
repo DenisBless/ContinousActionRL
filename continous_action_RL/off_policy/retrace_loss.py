@@ -45,6 +45,9 @@ class Retrace(torch.nn.Module):
         Returns:
             Retrace loss
         """
+
+        self.device = "cuda:0" if torch.cuda.is_available() else "cpu"
+
         if recursive:
             return self.retrace_recursive(Q=Q,
                                           expected_target_Q=expected_target_Q,
@@ -86,7 +89,7 @@ class Retrace(torch.nn.Module):
 
         B = Q.shape[0]  # batch size
         trajectory_length = Q.shape[1]
-        Q_ret = torch.zeros(B, trajectory_length)
+        Q_ret = torch.zeros(B, trajectory_length).to(self.device)
         for i in range(trajectory_length - 1):
             for j in range(i, trajectory_length - 1):
                 c_k = self.calc_retrace_weights(target_policy_probs, behaviour_policy_probs)
@@ -126,6 +129,10 @@ class Retrace(torch.nn.Module):
 
     @staticmethod
     def calc_retrace_weights(target_policy_probs, behaviour_policy_probs):
+        assert target_policy_probs.shape == behaviour_policy_probs.shape, \
+            "Error, shape mismatch. Shapes: target_policy_probs: " \
+            + str(target_policy_probs.shape) + " mean: " + str(behaviour_policy_probs.shape)
+
         return (target_policy_probs / behaviour_policy_probs.clamp(min=1e-10)).clamp(max=1)
 
     @staticmethod

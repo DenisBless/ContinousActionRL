@@ -17,7 +17,7 @@ if __name__ == '__main__':
     env = gym.make("Pendulum-v0")
     num_obs = env.observation_space.shape[0]
     num_actions = env.action_space.shape[0]
-    num_trajectories = 5
+    num_trajectories = 200
     trajectory_length = 200  # environment dependent
     log_dir = "/logs/"
 
@@ -29,7 +29,7 @@ if __name__ == '__main__':
                   num_obs=num_obs,
                   mean_scale=1,
                   std_low=0.01,
-                  std_high=1,
+                  std_high=0.001,
                   action_bound=(-2, 2))
 
     critic = Critic(num_actions=num_actions, num_obs=num_obs)
@@ -47,7 +47,7 @@ if __name__ == '__main__':
                                actor_lr=2.5e-4,
                                critic_lr=2.5e-4,
                                update_targnets_every=20,
-                               minibatch_size=5,
+                               minibatch_size=64,
                                logger=logger)
 
     for _ in range(5000):

@@ -16,21 +16,25 @@ class OffPolicyLearner:
                  critic_lr=2e-4,
                  num_training_iter=20,
                  update_targnets_every=4,
+                 expectation_samples=10,
                  minibatch_size=8,
                  logger=None):
 
-        self.actor = actor
-        self.critic = critic
+        self.device = "cuda:0" if torch.cuda.is_available() else "cpu"
+
+        self.actor = actor.to(self.device)
+        self.critic = critic.to(self.device)
         self.logger = logger
         self.trajectory_length = trajectory_length
         self.discount_factor = discount_factor
-        self.target_actor = copy.deepcopy(actor)
-        self.target_critic = copy.deepcopy(critic)
+        self.target_actor = copy.deepcopy(actor).to(self.device)
+        self.target_critic = copy.deepcopy(critic).to(self.device)
         self.actor_opt = torch.optim.Adam(params=actor.parameters(), lr=actor_lr)
         self.critic_opt = torch.optim.Adam(params=critic.parameters(), lr=critic_lr)
 
         self.num_training_iter = num_training_iter
         self.update_targnets_every = update_targnets_every
+        self.expectation_samples = expectation_samples
         self.minibatch_size = minibatch_size
 
         self.num_actions = actor.num_actions
@@ -67,20 +71,22 @@ class OffPolicyLearner:
                 # Compute 𝔼_π_target [Q(s_t,•)] with a ~ π_target(•|s_t), log(π_target(a|s))
                 expected_target_Q = torch.zeros_like(reward_batch)
                 mean, std = self.target_actor.forward(state_batch)
-                for _ in range(10):
+                mean = mean.to(self.device)
+                std = std.to(self.device)
+                for _ in range(self.expectation_samples):
                     action_sample, _ = self.target_actor.action_sample(mean, std)
-                    expected_target_Q += self.target_critic.forward(action_sample.unsqueeze(-1), state_batch).squeeze(-1)
-
-                expected_target_Q /= 10
+                    expected_target_Q += self.target_critic.forward(action_sample, state_batch) #.squeeze(-1)
+                expected_target_Q /= self.expectation_samples
 
                 # log(π_target(a_t | s_t))
                 target_action_log_prob = self.target_actor.get_log_prob(action_batch, mean, std)
 
                 # a ~ π(•|s_t), log(π(a|s))
                 actions, action_log_prob = self.actor.forward(state_batch)
+                actions.to(self.device)
 
                 # Q(a, s_t)
-                current_Q = self.critic.forward(actions.unsqueeze(-1), state_batch)
+                current_Q = self.critic.forward(actions, state_batch)
 
                 # Critic update
                 self.actor.eval()
@@ -90,7 +96,7 @@ class OffPolicyLearner:
                                                        expected_target_Q=expected_target_Q.squeeze(-1),
                                                        target_Q=target_Q.squeeze(-1),
                                                        rewards=reward_batch.squeeze(-1),
-                                                       target_policy_probs=torch.exp(target_action_log_prob),
+                                                       target_policy_probs=torch.exp(target_action_log_prob.squeeze(-1)),
                                                        behaviour_policy_probs=torch.exp(action_prob_batch.squeeze(-1)))
 
                 critic_loss.backward(retain_graph=True)
@@ -99,15 +105,16 @@ class OffPolicyLearner:
                 self.actor.train()
                 self.critic.eval()
                 self.actor_opt.zero_grad()
-                actor_loss = self.actor_loss.forward(current_Q.squeeze(-1), action_log_prob)
+                actor_loss = self.actor_loss.forward(Q=current_Q.squeeze(-1),
+                                                     action_log_prob=action_log_prob.squeeze(-1))
                 actor_loss.backward()
 
                 # Keep track of various values
                 if self.logger is not None and i % self.logger.log_every == 0:
-                    self.logger.log_DNN_params(self.actor, name="Actor")
-                    self.logger.log_DNN_gradients(self.actor, name="Actor")
-                    self.logger.log_DNN_params(self.critic, name="Critic")
-                    self.logger.log_DNN_gradients(self.critic, name="Critic")
+                    # self.logger.log_DNN_params(self.actor, name="Actor")
+                    # self.logger.log_DNN_gradients(self.actor, name="Actor")
+                    # self.logger.log_DNN_params(self.critic, name="Critic")
+                    # self.logger.log_DNN_gradients(self.critic, name="Critic")
 
                     self.logger.add_scalar(scalar_value=actor_loss.item(), tag="Actor_loss")
                     self.logger.add_scalar(scalar_value=critic_loss.item(), tag="Critic_loss")
