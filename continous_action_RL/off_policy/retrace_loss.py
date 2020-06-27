@@ -5,6 +5,7 @@ import torch.nn.functional as F
 class Retrace(torch.nn.Module):
     def __init__(self):
         super(Retrace, self).__init__()
+        self.device = "cuda:0" if torch.cuda.is_available() else "cpu"
 
     def forward(self,
                 Q,
@@ -45,8 +46,6 @@ class Retrace(torch.nn.Module):
         Returns:
             Retrace loss
         """
-
-        self.device = "cuda:0" if torch.cuda.is_available() else "cpu"
 
         if recursive:
             return self.retrace_recursive(Q=Q,
@@ -108,21 +107,46 @@ class Retrace(torch.nn.Module):
                           behaviour_policy_probs,
                           gamma=0.99):
 
+        Q_t = Q[:, :-1]
+        r_t = rewards[:, :-1]
+
+        with torch.no_grad():
+            # We don't want gradients from computing Q_ret, since:
+            # d/dφ (Q - Q_ret)^2 is proportional to (Q - Q_ret) * d/dφ Q
+            target_Q_next_t = target_Q[:, 1:]
+            expected_Q_next_t = expected_target_Q[:, 1:]
+            c_next_t = self.calc_retrace_weights(target_policy_probs, behaviour_policy_probs)[:, 1:]
+
+            delta = r_t + gamma * expected_Q_next_t - target_Q_next_t
+            decay = torch.cumprod(gamma * c_next_t, dim=1)
+            target = self.cumsum_reversed(delta * decay) / decay.clamp(min=1e-8)
+
+        return F.mse_loss(Q_t, target)
+
+    def retrace_recursiveOLD(self,
+                             Q,
+                             expected_target_Q,
+                             target_Q,
+                             rewards,
+                             target_policy_probs,
+                             behaviour_policy_probs,
+                             gamma=0.99):
+
         B = Q.shape[0]
         # We have Q, target_Q, rewards
         r_t = rewards[:, :-1]
         Q_t = Q[:, :-1]
-        target_Q_t = target_Q[:, :-1]
-        expected_Q_next_t = expected_target_Q[:, 1:]
 
+        target_Q_next_t = target_Q[:, 1:]
+        expected_Q_next_t = expected_target_Q[:, 1:]
         c_next_t = self.calc_retrace_weights(target_policy_probs, behaviour_policy_probs)[:, 1:]
 
-        delta = r_t + gamma * expected_Q_next_t - target_Q_t
+        delta = r_t + gamma * expected_Q_next_t - target_Q_next_t
         delta_rev = self.reverse_sequence(delta, B)
         decay = gamma * c_next_t
 
         decay_prod_rev = self.reverse_sequence(torch.cumprod(decay, dim=1), B)
-        target_rev = torch.cumsum(delta_rev * decay_prod_rev, dim=1) / decay_prod_rev
+        target_rev = torch.cumsum(delta_rev * decay_prod_rev, dim=1) / decay_prod_rev.clamp(min=1e-8)
         target = self.reverse_sequence(target_rev, B)
 
         return F.mse_loss(target, Q_t)
@@ -141,3 +165,11 @@ class Retrace(torch.nn.Module):
         for i in range(num_sequences):
             sequence[i, :] = sequence[i, :].flip(dims=[dim])
         return sequence.squeeze(-1)
+
+    @staticmethod
+    def cumsum_reversed(sequence):
+        return torch.flip(torch.cumsum(torch.flip(sequence, [1]), 1), [1])
+
+    @staticmethod
+    def cumprod_reversed(sequence):
+        return torch.flip(torch.cumprod(sequence, 1), [1])
