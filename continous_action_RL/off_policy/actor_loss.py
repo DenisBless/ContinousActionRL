@@ -22,4 +22,5 @@ class ActorLoss(torch.nn.Module):
         Returns:
             Scalar actor loss value
         """
-        return - (Q + self.alpha * action_log_prob).mean()
+        return - Q.mean()
+        # return - (Q + self.alpha * action_log_prob).mean()

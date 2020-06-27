@@ -53,7 +53,7 @@ class OffPolicyLearner:
             No return value
         """
         for i in range(self.num_training_iter):
-            for _ in range(self.update_targnets_every):
+            for j in range(self.update_targnets_every):
                 trajectories = replay_buffer.sample(self.minibatch_size)
                 state_batch, action_batch, reward_batch, action_prob_batch \
                     = Utils.create_batches(trajectories=trajectories,
@@ -100,7 +100,6 @@ class OffPolicyLearner:
                                                        target_policy_probs=torch.exp(target_action_log_prob.squeeze(-1)),
                                                        behaviour_policy_probs=torch.exp(action_prob_batch.squeeze(-1)),
                                                        recursive=True)
-                print(critic_loss)
                 critic_loss.backward(retain_graph=True)
 
                 # Actor update
@@ -112,7 +111,7 @@ class OffPolicyLearner:
                 actor_loss.backward()
 
                 # Keep track of various values
-                if self.logger is not None and i % self.logger.log_every == 0:
+                if self.logger is not None and j % self.logger.log_every == 0:
                     # self.logger.log_DNN_params(self.actor, name="Actor")
                     # self.logger.log_DNN_gradients(self.actor, name="Actor")
                     # self.logger.log_DNN_params(self.critic, name="Critic")

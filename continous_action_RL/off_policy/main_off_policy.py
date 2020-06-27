@@ -17,12 +17,12 @@ if __name__ == '__main__':
     env = gym.make("Pendulum-v0")
     num_obs = env.observation_space.shape[0]
     num_actions = env.action_space.shape[0]
-    num_trajectories = 20
-    mini_batch_size = 20
+    num_trajectories = 300
+    mini_batch_size = 64
     trajectory_length = 200  # environment dependent
     log_dir = "/logs/"
 
-    replay_buffer = ReplayBuffer(1500)
+    replay_buffer = ReplayBuffer(5000)
 
     logger = Logger(log_every=10)
 
@@ -31,7 +31,8 @@ if __name__ == '__main__':
                   mean_scale=2,
                   std_low=1e-2,
                   std_high=1,
-                  action_bound=(-2, 2))
+                  action_bound=(-2, 2),
+                  logger=logger)
 
     critic = Critic(num_actions=num_actions, num_obs=num_obs)
 
@@ -51,8 +52,8 @@ if __name__ == '__main__':
                                minibatch_size=mini_batch_size,
                                logger=logger)
 
-    for _ in range(5000):
-        print(_)
+    for t in range(5000):
+        print("-" * 10, t, "-" * 10)
         sampler.collect_trajectories()
         learner.learn(replay_buffer)
 
