@@ -92,6 +92,7 @@ class OffPolicyLearner:
                 self.actor.eval()
                 self.critic.train()
                 self.critic_opt.zero_grad()
+
                 critic_loss = self.critic_loss.forward(Q=Q.squeeze(-1),
                                                        expected_target_Q=expected_target_Q.squeeze(-1),
                                                        target_Q=target_Q.squeeze(-1),
@@ -99,7 +100,7 @@ class OffPolicyLearner:
                                                        target_policy_probs=torch.exp(target_action_log_prob.squeeze(-1)),
                                                        behaviour_policy_probs=torch.exp(action_prob_batch.squeeze(-1)),
                                                        recursive=True)
-
+                print(critic_loss)
                 critic_loss.backward(retain_graph=True)
 
                 # Actor update
