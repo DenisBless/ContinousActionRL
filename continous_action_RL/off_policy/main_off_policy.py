@@ -15,29 +15,39 @@ if __name__ == '__main__':
     Goal: Pendulum should stay upright
     """
     env = gym.make("Pendulum-v0")
-    num_obs = env.observation_space.shape[0]
-    num_actions = env.action_space.shape[0]
-    num_trajectories = 300
-    mini_batch_size = 64
-    trajectory_length = 200  # environment dependent
-    log_dir = "/logs/"
 
-    replay_buffer = ReplayBuffer(5000)
+    # PARAMETER
+    NUM_OBSERVATIONS = env.observation_space.shape[0]
+    NUM_ACTIONS = env.action_space.shape[0]
+    NUM_TRAJECTORIES = 300
+    BATCH_SIZE = 64
+    TRAJECTORY_LENGTH = 200  # environment dependent
+    UPDATE_TARGNETS_EVERY = 20
+    ACTOR_LEARNING_RATE = 2e-4
+    CRITIC_LEARNING_RATE = 2e-4
+    ACTION_STD_LOW = 1E-2
+    ACTION_STD_HIGH = 1
+    ACTION_MEAN_SCALE = 2
+    ACTION_BOUNDS = (-2, 2)
+    REPLAY_BUFFER_SIZE = 5000
+    LOG_EVERY = 10
 
-    logger = Logger(log_every=10)
+    replay_buffer = ReplayBuffer(REPLAY_BUFFER_SIZE)
 
-    actor = Actor(num_actions=num_actions,
-                  num_obs=num_obs,
-                  mean_scale=2,
-                  std_low=1e-2,
-                  std_high=1,
-                  action_bound=(-2, 2),
+    logger = Logger(log_every=LOG_EVERY)
+
+    actor = Actor(num_actions=NUM_ACTIONS,
+                  num_obs=NUM_OBSERVATIONS,
+                  mean_scale=ACTION_MEAN_SCALE,
+                  std_low=ACTION_STD_LOW,
+                  std_high=ACTION_STD_HIGH,
+                  action_bound=ACTION_BOUNDS,
                   logger=logger)
 
-    critic = Critic(num_actions=num_actions, num_obs=num_obs)
+    critic = Critic(num_actions=NUM_ACTIONS, num_obs=NUM_OBSERVATIONS)
 
     sampler = Sampler(env=env,
-                      num_trajectories=num_trajectories,
+                      num_trajectories=NUM_TRAJECTORIES,
                       actor_network=actor,
                       replay_buffer=replay_buffer,
                       render=False,
@@ -45,20 +55,14 @@ if __name__ == '__main__':
 
     learner = OffPolicyLearner(actor=actor,
                                critic=critic,
-                               trajectory_length=trajectory_length,
-                               actor_lr=2.5e-4,
-                               critic_lr=2.5e-4,
-                               update_targnets_every=20,
-                               minibatch_size=mini_batch_size,
+                               trajectory_length=TRAJECTORY_LENGTH,
+                               actor_lr=ACTOR_LEARNING_RATE,
+                               critic_lr=CRITIC_LEARNING_RATE,
+                               update_targnets_every=UPDATE_TARGNETS_EVERY,
+                               minibatch_size=BATCH_SIZE,
                                logger=logger)
 
     for t in range(5000):
         print("-" * 10, t, "-" * 10)
         sampler.collect_trajectories()
         learner.learn(replay_buffer)
-
-# Todo: When using an environment with multiple continuous actions, we need to use a Multivariate Normal Dist.
-# Todo: How do we compute the expectations wrt to the policy?
-# Todo: Do we detach the action and action probs when sampling?
-# Todo: The delta in the retrace loss in LbP paper is computed between "i" and "j". In the original paper it os
-#  computed between "i" and "i + 1". Which one is correct?
