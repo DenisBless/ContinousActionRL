@@ -7,6 +7,7 @@ from continous_action_RL.off_policy.off_policy_learner import OffPolicyLearner
 import gym
 import pathlib
 import torch
+import time
 
 if __name__ == '__main__':
 
@@ -93,7 +94,11 @@ if __name__ == '__main__':
                           render=False)
 
     for t in range(TOTAL_TIMESTEPS):
+        tm = time.time()
         print("-" * 10, t, "-" * 10)
         sampler.collect_trajectories()
+        print("Sampling Nr. ", t + 1, " finished in ", tm - time.time(), " seconds.")
+        tm = time.time()
         learner.learn(replay_buffer)
+        print("Learning Nr. ", t + 1, " finished in ", tm - time.time(), " seconds.")
         evaluator.evaluate()
