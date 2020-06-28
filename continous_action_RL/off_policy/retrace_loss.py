@@ -132,7 +132,7 @@ class Retrace(torch.nn.Module):
             expected_Q_next_t = expected_target_Q[:, 1:]
             c_next_t = self.calc_retrace_weights(target_policy_probs, behaviour_policy_probs)[:, 1:]
 
-            delta = r_t + gamma * expected_Q_next_t - target_Q_next_t
+            delta = r_t + gamma * (expected_Q_next_t - c_next_t * target_Q_next_t)
             decay = torch.cumprod(gamma * c_next_t, dim=1)
             target = self.cumsum_reversed(delta * decay) / decay.clamp(min=1e-10)
 

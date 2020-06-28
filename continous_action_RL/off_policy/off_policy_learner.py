@@ -31,6 +31,8 @@ class OffPolicyLearner:
         self.discount_factor = discount_factor
         self.target_actor = copy.deepcopy(actor).to(self.device)
         self.target_critic = copy.deepcopy(critic).to(self.device)
+        Utils.freeze_net(self.target_actor)
+        Utils.freeze_net(self.target_critic)
         self.actor_opt = torch.optim.Adam(params=actor.parameters(), lr=actor_lr)
         self.critic_opt = torch.optim.Adam(params=critic.parameters(), lr=critic_lr)
 
