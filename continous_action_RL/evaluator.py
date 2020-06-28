@@ -46,7 +46,6 @@ class Evaluator:
                     next_obs = next_obs.to(self.device)
                     obs = torch.tensor(next_obs, dtype=torch.float)
 
-
                     if self.render:
                         self.env.render()
 

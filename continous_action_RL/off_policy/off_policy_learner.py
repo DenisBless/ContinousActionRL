@@ -25,6 +25,9 @@ class OffPolicyLearner:
 
         self.device = "cuda:0" if torch.cuda.is_available() else "cpu"
 
+        self.actor = actor
+        self.critic = critic
+
         self.logger = logger
         self.trajectory_length = trajectory_length
         self.discount_factor = discount_factor
