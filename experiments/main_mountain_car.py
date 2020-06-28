@@ -1,3 +1,5 @@
+import torch
+
 from continous_action_RL.actor_critic_networks import Actor, Critic
 from continous_action_RL.off_policy.replay_buffer import ReplayBuffer
 from continous_action_RL.sampler import Sampler
@@ -6,6 +8,7 @@ from continous_action_RL.logger import Logger
 from continous_action_RL.off_policy.off_policy_learner import OffPolicyLearner
 import pathlib
 import gym
+import time
 
 if __name__ == '__main__':
 
@@ -22,20 +25,22 @@ if __name__ == '__main__':
     NUM_ACTIONS = env.action_space.shape[0]
     TRAJECTORY_LENGTH = 1000
     NUM_EVAL_TRAJECTORIES = 50
-    NUM_TRAJECTORIES = 32
-    BATCH_SIZE = 32
-    UPDATE_TARGNETS_EVERY = 50
-    NUM_TRAINING_ITERATIONS = 100
+    NUM_TRAJECTORIES = 300
+    BATCH_SIZE = 64
+    UPDATE_TARGNETS_EVERY = 10
+    NUM_TRAINING_ITERATIONS = 30
     TOTAL_TIMESTEPS = 1000
     ACTOR_LEARNING_RATE = 2e-4
     CRITIC_LEARNING_RATE = 2e-4
+    GRADIENT_CLIPPING_VALUE = None
+    NUM_EXPECTATION_SAMPLES = 1
     ENTROPY_REGULARIZATION_ON = False
     ENTROPY_REGULARIZATION = 1e-5
-    ACTION_STD_LOW = 1e-2
+    ACTION_STD_LOW = 1e-1
     ACTION_STD_HIGH = 1
-    ACTION_MEAN_SCALE = 1
-    ACTION_BOUNDS = (-1, 1)
-    REPLAY_BUFFER_SIZE = 5000
+    ACTION_MEAN_SCALE = 2
+    ACTION_BOUNDS = (-2, 2)
+    REPLAY_BUFFER_SIZE = 10000
     LOG_EVERY = 10
     SAVE_MODEL_EVERY = 10
     MODEL_SAVE_PATH = str(pathlib.Path().absolute()) + "/models/"
@@ -53,6 +58,11 @@ if __name__ == '__main__':
 
     critic = Critic(num_actions=NUM_ACTIONS, num_obs=NUM_OBSERVATIONS)
 
+    device = "cuda:0" if torch.cuda.is_available() else "cpu"
+
+    actor = actor.to(device)
+    critic = critic.to(device)
+
     sampler = Sampler(env=env,
                       num_trajectories=NUM_TRAJECTORIES,
                       actor_network=actor,
@@ -65,8 +75,10 @@ if __name__ == '__main__':
                                trajectory_length=TRAJECTORY_LENGTH,
                                actor_lr=ACTOR_LEARNING_RATE,
                                critic_lr=CRITIC_LEARNING_RATE,
+                               expectation_samples=NUM_EXPECTATION_SAMPLES,
                                entropy_regularization_on=ENTROPY_REGULARIZATION_ON,
                                entropy_regularization=ENTROPY_REGULARIZATION,
+                               gradient_clip_val=GRADIENT_CLIPPING_VALUE,
                                update_targnets_every=UPDATE_TARGNETS_EVERY,
                                num_training_iter=NUM_TRAINING_ITERATIONS,
                                minibatch_size=BATCH_SIZE,
@@ -82,8 +94,11 @@ if __name__ == '__main__':
                           render=False)
 
     for t in range(TOTAL_TIMESTEPS):
+        tm = time.time()
         print("-" * 10, t, "-" * 10)
         sampler.collect_trajectories()
+        print("Sampling Nr. ", t + 1, " finished in ", time.time() - tm, " seconds.")
+        tm = time.time()
         learner.learn(replay_buffer)
+        print("Learning Nr. ", t + 1, " finished in ", time.time() - tm, " seconds.")
         evaluator.evaluate()
-

@@ -130,9 +130,6 @@ class OffPolicyLearner:
                     torch.nn.utils.clip_grad_norm_(self.critic.parameters(), self.gradient_clip_val)
                     torch.nn.utils.clip_grad_norm_(self.actor.parameters(), self.gradient_clip_val)
 
-                self.critic_opt.step()
-                self.actor_opt.step()
-
                 # Keep track of various values
                 if self.logger is not None and j % self.logger.log_every == 0:
                     # self.logger.log_DNN_params(self.actor, name="Actor")
@@ -144,6 +141,9 @@ class OffPolicyLearner:
                     self.logger.add_scalar(scalar_value=critic_loss.item(), tag="Critic_loss")
                     self.logger.add_scalar(scalar_value=std.mean().item(), tag="Action_std")
                     self.logger.add_histogram(values=mean, tag="Action_mean")
+
+                self.critic_opt.step()
+                self.actor_opt.step()
 
             # Update the target networks
             self.update_targnets()

@@ -38,8 +38,9 @@ class Evaluator:
                 done = False
                 while not done:
                     mean, std = self.actor.forward(observation=obs)
-
-                    action, action_log_prob = self.actor.action_sample(mean, torch.zeros_like(mean))
+                    mean = mean.to(self.device)
+                    std = std.to(self.device)
+                    action, action_log_prob = self.actor.action_sample(mean, std)
                     action = action.to(self.device)
                     next_obs, reward, done, _ = self.env.step([action.item()])
                     rewards.append(reward)
