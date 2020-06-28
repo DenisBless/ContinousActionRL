@@ -11,10 +11,9 @@ if __name__ == '__main__':
 
     """
     Information on the Environment:
-    Actions - Dim: (1,); Value Range: [-2, 2]
-    Observations - Dim (3,)
-    Constant Trajectory Length of 200
-    Goal: Pendulum should stay upright
+    Actions - Dim: (1,); Value Range: [-1, 1]
+    Varying Trajectory Length of 1000 
+    Goal: Mountain car hits the top
     """
     env = gym.make("MountainCarContinuous-v0")
 
