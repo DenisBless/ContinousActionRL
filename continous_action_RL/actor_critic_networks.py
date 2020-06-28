@@ -8,14 +8,16 @@ class Critic(torch.nn.Module):
     def __init__(self,
                  num_actions,
                  num_obs,
-                 hidden_size1=64,
-                 hidden_size2=64):
+                 hidden_size1=256,
+                 hidden_size2=128,
+                 hidden_size3=64):
         super(Critic, self).__init__()
 
         self.num_actions = num_actions
         self.input = torch.nn.Linear(num_actions + num_obs, hidden_size1)
         self.hidden = torch.nn.Linear(hidden_size1, hidden_size2)
-        self.output = torch.nn.Linear(hidden_size2, 1)
+        self.hidden = torch.nn.Linear(hidden_size2, hidden_size3)
+        self.output = torch.nn.Linear(hidden_size3, 1)
 
     def forward(self, action, observation):
         """
@@ -32,10 +34,9 @@ class Critic(torch.nn.Module):
             "Error, dimension mismatch. Dimensions: " \
             "action: " + str(action.dim()) + " observation: " + str(observation.dim())
 
-        x = self.input(torch.cat((action, observation), dim=2))  # dim 2 are the input features
-        x = F.elu(x)
-        x = self.hidden(x)
-        x = F.elu(x)
+        x = F.elu(self.input(torch.cat((action, observation), dim=2)))  # dim 2 are the input features
+        x = F.elu(self.hidden1(x))
+        x = F.elu(self.hidden2(x))
         x = self.output(x)
         return x
 
@@ -44,12 +45,14 @@ class Actor(torch.nn.Module):
     def __init__(self,
                  num_actions,
                  num_obs,
-                 hidden_size1=64,
-                 hidden_size2=64,
+                 hidden_size1=256,
+                 hidden_size2=128,
+                 hidden_size3=64,
                  mean_scale=1,
                  std_low=0.01,
                  std_high=1,
                  action_bound=None):
+
         super(Actor, self).__init__()
         self.num_actions = num_actions
         self.num_obs = num_obs
@@ -58,16 +61,15 @@ class Actor(torch.nn.Module):
         self.std_high = std_high
         self.action_bound = action_bound
         self.input = torch.nn.Linear(num_obs, hidden_size1)
-        self.hidden = torch.nn.Linear(hidden_size1, hidden_size2)
-        self.output = torch.nn.Linear(hidden_size2, 2 * num_actions)
+        self.hidden1 = torch.nn.Linear(hidden_size1, hidden_size2)
+        self.hidden2 = torch.nn.Linear(hidden_size2, hidden_size3)
+        self.output = torch.nn.Linear(hidden_size3, 2 * num_actions)
 
     def forward(self, observation):
-        x = self.input(observation)
-        x = F.elu(x)
-        x = self.hidden(x)
-        x = F.elu(x)
-        x = self.output(x)
-        x = F.tanh(x)
+        x = F.elu(self.input(observation))
+        x = F.elu(self.hidden1(x))
+        x = F.elu(self.hidden2(x))
+        x = torch.tanh(self.output(x))
         mean, std = self.get_normal_params(x)
         return mean, std
 

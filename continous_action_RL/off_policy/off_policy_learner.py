@@ -59,6 +59,10 @@ class OffPolicyLearner:
         """
         for i in range(self.num_training_iter):
             for j in range(self.update_targnets_every):
+
+                self.actor.train()
+                self.critic.train()
+
                 trajectories = replay_buffer.sample(self.minibatch_size)
                 state_batch, action_batch, reward_batch, action_prob_batch \
                     = Utils.create_batches(trajectories=trajectories,
@@ -80,7 +84,7 @@ class OffPolicyLearner:
                 std = std.to(self.device)
                 for _ in range(self.expectation_samples):
                     action_sample, _ = self.target_actor.action_sample(mean, std)
-                    expected_target_Q += self.target_critic.forward(action_sample, state_batch) #.squeeze(-1)
+                    expected_target_Q += self.target_critic.forward(action_sample, state_batch)
                 expected_target_Q /= self.expectation_samples
 
                 # log(π_target(a_t | s_t))
@@ -112,6 +116,7 @@ class OffPolicyLearner:
                 self.actor.train()
                 self.critic.eval()
                 self.actor_opt.zero_grad()
+
                 actor_loss = self.actor_loss.forward(Q=current_Q.squeeze(-1),
                                                      action_log_prob=action_log_prob.squeeze(-1))
                 actor_loss.backward()

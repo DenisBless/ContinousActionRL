@@ -45,7 +45,7 @@ if __name__ == '__main__':
 
     critic = Critic(num_actions=NUM_ACTIONS, num_obs=NUM_OBSERVATIONS)
 
-    actor.load_state_dict(torch.load(str(Path(__file__).resolve().parents[1]) + "/continous_action_RL/models/actor_10"))
+    actor.load_state_dict(torch.load(str(Path(__file__).resolve().parents[1]) + "/continous_action_RL/models/actor_40"))
 
     evaluator = Evaluator(env=env,
                           actor=actor,
