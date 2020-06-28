@@ -1,7 +1,7 @@
 from continous_action_RL.actor_critic_networks import Actor, Critic
 from continous_action_RL.off_policy.replay_buffer import ReplayBuffer
 from continous_action_RL.sampler import Sampler
-from continous_action_RL.evaluater import Evaluator
+from continous_action_RL.evaluator import Evaluator
 from continous_action_RL.logger import Logger
 from continous_action_RL.off_policy.off_policy_learner import OffPolicyLearner
 import pathlib

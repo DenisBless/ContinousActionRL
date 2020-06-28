@@ -16,6 +16,7 @@ class OffPolicyLearner:
                  critic_lr=2e-4,
                  entropy_regularization_on=True,
                  entropy_regularization=1e-3,
+                 gradient_clip_val=None,
                  num_training_iter=100,
                  update_targnets_every=20,
                  expectation_samples=10,
@@ -40,6 +41,7 @@ class OffPolicyLearner:
         self.update_targnets_every = update_targnets_every
         self.expectation_samples = expectation_samples
         self.minibatch_size = minibatch_size
+        self.gradient_clip_val = gradient_clip_val
 
         self.num_actions = actor.num_actions
         self.num_obs = actor.num_obs
@@ -133,7 +135,11 @@ class OffPolicyLearner:
                     self.logger.add_scalar(scalar_value=std.mean().item(), tag="Action_std")
                     self.logger.add_histogram(values=mean, tag="Action_mean")
 
-                # Gradient update step
+                # Gradient update step with gradient clipping
+                if self.gradient_clip_val is not None:
+                    torch.nn.utils.clip_grad_value_(self.critic.parameters(), self.gradient_clip_val)
+                    torch.nn.utils.clip_grad_value_(self.actor.parameters(), self.gradient_clip_val)
+
                 self.critic_opt.step()
                 self.actor_opt.step()
 

@@ -15,8 +15,8 @@ class Critic(torch.nn.Module):
 
         self.num_actions = num_actions
         self.input = torch.nn.Linear(num_actions + num_obs, hidden_size1)
-        self.hidden = torch.nn.Linear(hidden_size1, hidden_size2)
-        self.hidden = torch.nn.Linear(hidden_size2, hidden_size3)
+        self.hidden1 = torch.nn.Linear(hidden_size1, hidden_size2)
+        self.hidden2 = torch.nn.Linear(hidden_size2, hidden_size3)
         self.output = torch.nn.Linear(hidden_size3, 1)
 
     def forward(self, action, observation):
@@ -52,7 +52,6 @@ class Actor(torch.nn.Module):
                  std_low=0.01,
                  std_high=1,
                  action_bound=None):
-
         super(Actor, self).__init__()
         self.num_actions = num_actions
         self.num_obs = num_obs
