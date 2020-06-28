@@ -109,7 +109,8 @@ class OffPolicyLearner:
                                                        expected_target_Q=expected_target_Q.squeeze(-1),
                                                        target_Q=target_Q.squeeze(-1),
                                                        rewards=reward_batch.squeeze(-1),
-                                                       target_policy_probs=torch.exp(target_action_log_prob.squeeze(-1)),
+                                                       target_policy_probs=torch.exp(
+                                                           target_action_log_prob.squeeze(-1)),
                                                        behaviour_policy_probs=torch.exp(action_prob_batch.squeeze(-1)),
                                                        recursive=True)
 
@@ -124,6 +125,14 @@ class OffPolicyLearner:
                                                      action_log_prob=action_log_prob.squeeze(-1))
                 actor_loss.backward()
 
+                # Gradient update step with gradient clipping
+                if self.gradient_clip_val is not None:
+                    torch.nn.utils.clip_grad_norm_(self.critic.parameters(), self.gradient_clip_val)
+                    torch.nn.utils.clip_grad_norm_(self.actor.parameters(), self.gradient_clip_val)
+
+                self.critic_opt.step()
+                self.actor_opt.step()
+
                 # Keep track of various values
                 if self.logger is not None and j % self.logger.log_every == 0:
                     # self.logger.log_DNN_params(self.actor, name="Actor")
@@ -135,14 +144,6 @@ class OffPolicyLearner:
                     self.logger.add_scalar(scalar_value=critic_loss.item(), tag="Critic_loss")
                     self.logger.add_scalar(scalar_value=std.mean().item(), tag="Action_std")
                     self.logger.add_histogram(values=mean, tag="Action_mean")
-
-                # Gradient update step with gradient clipping
-                if self.gradient_clip_val is not None:
-                    torch.nn.utils.clip_grad_value_(self.critic.parameters(), self.gradient_clip_val)
-                    torch.nn.utils.clip_grad_value_(self.actor.parameters(), self.gradient_clip_val)
-
-                self.critic_opt.step()
-                self.actor_opt.step()
 
             # Update the target networks
             self.update_targnets()

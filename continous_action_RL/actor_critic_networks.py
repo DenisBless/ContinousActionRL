@@ -52,6 +52,7 @@ class Actor(torch.nn.Module):
                  std_low=0.01,
                  std_high=1,
                  action_bound=None):
+
         super(Actor, self).__init__()
         self.num_actions = num_actions
         self.num_obs = num_obs
@@ -106,7 +107,7 @@ class Actor(torch.nn.Module):
         """
         # mean is between [-mean_scale, mean_scale]
         mid = x.shape[-1] // 2
-        mean = self.mean_scale * x[:mid] if x.dim() == 1 else x[:, :, :mid]
+        mean = self.mean_scale * x[:mid] if x.dim() == 1 else self.mean_scale * x[:, :, :mid]
 
         # standard deviation is between [std_low, std_high]
         std_unscaled = x[mid:] if x.dim() == 1 else x[:, :, mid:]
