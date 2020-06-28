@@ -43,7 +43,7 @@ class Evaluator:
                     action = action.to(self.device)
                     next_obs, reward, done, _ = self.env.step([action.item()])
                     rewards.append(reward)
-                    next_obs = next_obs.to(self.device)
+                    torch.tensor(next_obs, dtype=torch.float).to(self.device)
                     obs = torch.tensor(next_obs, dtype=torch.float)
 
                     if self.render:
