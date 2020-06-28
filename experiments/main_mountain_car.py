@@ -4,8 +4,6 @@ from continous_action_RL.sampler import Sampler
 from continous_action_RL.logger import Logger
 from continous_action_RL.off_policy.off_policy_learner import OffPolicyLearner
 import gym
-import torch
-import pathlib
 
 if __name__ == '__main__':
 
@@ -73,25 +71,3 @@ if __name__ == '__main__':
         print("-" * 10, t, "-" * 10)
         sampler.collect_trajectories()
         learner.learn(replay_buffer)
-        if t % SAVE_MODEL_EVERY == 0:
-            torch.save(actor.state_dict(), str(pathlib.Path().absolute()) + "/models/actor_" + str(t))
-            torch.save(critic.state_dict(), str(pathlib.Path().absolute()) + "/models/critic_" + str(t))
-
-    # actor.load_state_dict(torch.load(str(pathlib.Path().absolute()) + "/models_pendulum_V0/actor_60"))
-    # critic.load_state_dict(torch.load(str(pathlib.Path().absolute()) + "/models_pendulum_V0/critic_60"))
-    #
-    # obs = torch.tensor(env.reset(), dtype=torch.float)
-    # done = False
-    # rewards = []
-    # while True:
-    #     mean, std = actor.forward(observation=obs)
-    #
-    #     action, action_log_prob = actor.action_sample(mean, torch.zeros_like(mean))
-    #     next_obs, reward, done, _ = env.step([action.item()])
-    #     rewards.append(reward)
-    #     next_obs = torch.tensor(next_obs, dtype=torch.float)
-    #     obs = next_obs
-    #     env.render()
-    #     if done:
-    #         obs = torch.tensor(env.reset(), dtype=torch.float)
-    #         print(np.mean(reward))

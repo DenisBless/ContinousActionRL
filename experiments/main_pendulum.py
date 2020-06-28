@@ -1,12 +1,11 @@
 from continous_action_RL.actor_critic_networks import Actor, Critic
-from continous_action_RL.off_policy.replay_buffer import *
+from continous_action_RL.off_policy.replay_buffer import ReplayBuffer
 from continous_action_RL.sampler import Sampler
+from continous_action_RL.evaluater import Evaluator
 from continous_action_RL.logger import Logger
 from continous_action_RL.off_policy.off_policy_learner import OffPolicyLearner
 import gym
-import torch
 import pathlib
-import numpy as np
 
 if __name__ == '__main__':
 
@@ -17,18 +16,21 @@ if __name__ == '__main__':
     Constant Trajectory Length of 200
     Goal: Pendulum should stay upright
     """
-    env = gym.make("MountainCarContinuous-v0")
+    env = gym.make("Pendulum-v0")
 
     # PARAMETER
     NUM_OBSERVATIONS = env.observation_space.shape[0]
     NUM_ACTIONS = env.action_space.shape[0]
-    NUM_TRAJECTORIES = 300
-    BATCH_SIZE = 32
     TRAJECTORY_LENGTH = 200
-    UPDATE_TARGNETS_EVERY = 50
-    NUM_TRAINING_ITERATIONS = 100
+    NUM_EVAL_TRAJECTORIES = 50
+    NUM_TRAJECTORIES = 32
+    BATCH_SIZE = 32
+    UPDATE_TARGNETS_EVERY = 1# 50
+    NUM_TRAINING_ITERATIONS = 1# 100
+    TOTAL_TIMESTEPS = 1000
     ACTOR_LEARNING_RATE = 2e-4
     CRITIC_LEARNING_RATE = 2e-4
+    ENTROPY_REGULARIZATION_ON = False
     ENTROPY_REGULARIZATION = 1e-5
     ACTION_STD_LOW = 1e-2
     ACTION_STD_HIGH = 1
@@ -37,6 +39,7 @@ if __name__ == '__main__':
     REPLAY_BUFFER_SIZE = 5000
     LOG_EVERY = 10
     SAVE_MODEL_EVERY = 10
+    MODEL_SAVE_PATH = str(pathlib.Path().absolute()) + "/models/"
 
     replay_buffer = ReplayBuffer(REPLAY_BUFFER_SIZE)
 
@@ -63,43 +66,24 @@ if __name__ == '__main__':
                                trajectory_length=TRAJECTORY_LENGTH,
                                actor_lr=ACTOR_LEARNING_RATE,
                                critic_lr=CRITIC_LEARNING_RATE,
+                               entropy_regularization_on=ENTROPY_REGULARIZATION_ON,
                                entropy_regularization=ENTROPY_REGULARIZATION,
                                update_targnets_every=UPDATE_TARGNETS_EVERY,
                                num_training_iter=NUM_TRAINING_ITERATIONS,
                                minibatch_size=BATCH_SIZE,
                                logger=logger)
 
+    evaluator = Evaluator(env=env,
+                          actor=actor,
+                          critic=critic,
+                          save_path=MODEL_SAVE_PATH,
+                          num_trajectories=NUM_EVAL_TRAJECTORIES,
+                          save_model_every=SAVE_MODEL_EVERY,
+                          logger=logger,
+                          render=False)
 
-
-
-    for t in range(5000):
+    for t in range(TOTAL_TIMESTEPS):
         print("-" * 10, t, "-" * 10)
         sampler.collect_trajectories()
         learner.learn(replay_buffer)
-        if t % SAVE_MODEL_EVERY == 0:
-            torch.save(actor.state_dict(), str(pathlib.Path().absolute()) + "/models_pendulum_V0/actor_" + str(t))
-            torch.save(critic.state_dict(), str(pathlib.Path().absolute()) + "/models_pendulum_V0/critic_" + str(t))
-
-    # actor.load_state_dict(torch.load(str(pathlib.Path().absolute()) + "/models_pendulum_V0/actor_60"))
-    # critic.load_state_dict(torch.load(str(pathlib.Path().absolute()) + "/models_pendulum_V0/critic_60"))
-    #
-    # obs = torch.tensor(env.reset(), dtype=torch.float)
-    # done = False
-    # rewards = []
-    # while True:
-    #     mean, std = actor.forward(observation=obs)
-    #
-    #     action, action_log_prob = actor.action_sample(mean, torch.zeros_like(mean))
-    #     next_obs, reward, done, _ = env.step([action.item()])
-    #     rewards.append(reward)
-    #     next_obs = torch.tensor(next_obs, dtype=torch.float)
-    #     obs = next_obs
-    #     env.render()
-    #     if done:
-    #         obs = torch.tensor(env.reset(), dtype=torch.float)
-    #         print(np.mean(reward))
-
-
-
-
-
+        evaluator.evaluate()

@@ -50,7 +50,7 @@ class Sampler:
 
             if self.logger is not None and i % self.logger.log_every == 0:
                 print(rewards.mean().item())
-                self.logger.add_scalar(scalar_value=rewards.mean(), tag="mean_reward")
+                self.logger.add_scalar(scalar_value=rewards.mean(), tag="sampler_reward")
                 # self.logger.add_histogram(values=actions, tag="actions")
 
             self.replay_buffer.push(states, actions.detach(), rewards, action_log_probs.detach())

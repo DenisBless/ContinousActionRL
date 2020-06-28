@@ -14,6 +14,7 @@ class OffPolicyLearner:
                  discount_factor=0.99,
                  actor_lr=2e-4,
                  critic_lr=2e-4,
+                 entropy_regularization_on=True,
                  entropy_regularization=1e-3,
                  num_training_iter=100,
                  update_targnets_every=20,
@@ -41,7 +42,8 @@ class OffPolicyLearner:
         self.num_actions = actor.num_actions
         self.num_obs = actor.num_obs
 
-        self.actor_loss = ActorLoss(alpha=entropy_regularization)
+        self.actor_loss = ActorLoss(entropy_regularization_on=entropy_regularization_on,
+                                    alpha=entropy_regularization)
         self.critic_loss = Retrace()
 
     def learn(self, replay_buffer):

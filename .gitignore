@@ -3,4 +3,6 @@
 !/tmp/
 */runs
 continous_action_RL/models_pendulum_V0
-!/main_mountain_car.py
+!/continous_action_RL/models/*
+!/continous_action_RL/models/
+

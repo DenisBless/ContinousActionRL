@@ -2,13 +2,16 @@ import torch
 
 
 class ActorLoss(torch.nn.Module):
-    def __init__(self, alpha=1e-3):
+    def __init__(self,
+                 entropy_regularization_on=True,
+                 alpha=1e-3):
         """
         Loss function for the actor.
         Args:
             alpha: entropy regularization parameter.
         """
         super(ActorLoss, self).__init__()
+        self.entropy_regularization_on = entropy_regularization_on
         self.alpha = alpha
 
     def forward(self, Q, action_log_prob):
@@ -22,5 +25,7 @@ class ActorLoss(torch.nn.Module):
         Returns:
             Scalar actor loss value
         """
-        # return - Q.mean()
-        return - (Q + self.alpha * action_log_prob).mean()
+        if self.entropy_regularization_on:
+            return - (Q + self.alpha * action_log_prob).mean()
+        else:
+            return - Q.mean()

@@ -1,6 +1,5 @@
 import torch
 import numpy as np
-import pathlib
 
 
 class Evaluator:
@@ -26,7 +25,7 @@ class Evaluator:
 
     def evaluate(self):
         self.num_evals += 1
-        self.actor.eval()  # Eval mode: Sets the action variance to zero, disables batchnorm and dropout etc.
+        self.actor.eval()  # Eval mode: Sets the action variance to zero, disables batch-norm and dropout etc.
 
         obs = torch.tensor(self.env.reset(), dtype=torch.float)
         rewards = []
@@ -51,7 +50,5 @@ class Evaluator:
 
         # Saving the model parameters
         if self.num_evals % self.save_model_every == 0 and self.num_evals > 0:
-            torch.save(self.actor.state_dict(),
-                       str(pathlib.Path().absolute()) + "/models/actor_" + str(self.num_evals))
-            torch.save(self.critic.state_dict(),
-                       str(pathlib.Path().absolute()) + "/models/critic_" + str(self.num_evals))
+            torch.save(self.actor.state_dict(), self.save_path + "actor_" + str(self.num_evals))
+            torch.save(self.critic.state_dict(), self.save_path + "critic_" + str(self.num_evals))
