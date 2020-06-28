@@ -50,7 +50,7 @@ class Evaluator:
                         self.env.render()
 
                     if done:
-                        obs = torch.tensor(self.env.reset(), dtype=torch.float)
+                        obs = torch.tensor(self.env.reset(), dtype=torch.float).to(self.device)
                         if self.logger is None:
                             print("Mean reward: ", np.mean(rewards))
                         else:
