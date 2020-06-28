@@ -12,6 +12,9 @@ class Evaluator:
                  save_model_every=10,
                  logger=None,
                  render=False):
+
+        self.device = "cuda:0" if torch.cuda.is_available() else "cpu"
+
         self.env = env
         self.actor = actor
         self.critic = critic
@@ -28,6 +31,7 @@ class Evaluator:
         self.actor.eval()  # Eval mode: Sets the action variance to zero, disables batch-norm and dropout etc.
 
         obs = torch.tensor(self.env.reset(), dtype=torch.float)
+        obs = obs.to(self.device)
         with torch.no_grad():
             for i in range(self.num_samples):
                 rewards = []
@@ -36,9 +40,11 @@ class Evaluator:
                     mean, std = self.actor.forward(observation=obs)
 
                     action, action_log_prob = self.actor.action_sample(mean, torch.zeros_like(mean))
+                    action = action.to(self.device)
                     next_obs, reward, done, _ = self.env.step([action.item()])
                     rewards.append(reward)
                     obs = torch.tensor(next_obs, dtype=torch.float)
+                    obs = obs.to(self.device)
 
                     if self.render:
                         self.env.render()

@@ -6,6 +6,7 @@ from continous_action_RL.logger import Logger
 from continous_action_RL.off_policy.off_policy_learner import OffPolicyLearner
 import gym
 import pathlib
+import torch
 
 if __name__ == '__main__':
 
@@ -23,8 +24,8 @@ if __name__ == '__main__':
     NUM_ACTIONS = env.action_space.shape[0]
     TRAJECTORY_LENGTH = 200
     NUM_EVAL_TRAJECTORIES = 50
-    NUM_TRAJECTORIES = 32
-    BATCH_SIZE = 32
+    NUM_TRAJECTORIES = 500
+    BATCH_SIZE = 64
     UPDATE_TARGNETS_EVERY = 50
     NUM_TRAINING_ITERATIONS = 50
     TOTAL_TIMESTEPS = 1000
@@ -55,6 +56,11 @@ if __name__ == '__main__':
                   action_bound=ACTION_BOUNDS)
 
     critic = Critic(num_actions=NUM_ACTIONS, num_obs=NUM_OBSERVATIONS)
+
+    device = "cuda:0" if torch.cuda.is_available() else "cpu"
+
+    actor = actor.to(device)
+    critic = critic.to(device)
 
     sampler = Sampler(env=env,
                       num_trajectories=NUM_TRAJECTORIES,
