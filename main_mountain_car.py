@@ -6,7 +6,6 @@ from continous_action_RL.off_policy.off_policy_learner import OffPolicyLearner
 import gym
 import torch
 import pathlib
-import numpy as np
 
 if __name__ == '__main__':
 
@@ -17,6 +16,7 @@ if __name__ == '__main__':
     Constant Trajectory Length of 200
     Goal: Pendulum should stay upright
     """
+    # env = gym.make("Pendulum-v0")
     env = gym.make("MountainCarContinuous-v0")
 
     # PARAMETER
@@ -24,7 +24,7 @@ if __name__ == '__main__':
     NUM_ACTIONS = env.action_space.shape[0]
     NUM_TRAJECTORIES = 300
     BATCH_SIZE = 32
-    TRAJECTORY_LENGTH = 200
+    TRAJECTORY_LENGTH = 1000
     UPDATE_TARGNETS_EVERY = 50
     NUM_TRAINING_ITERATIONS = 100
     ACTOR_LEARNING_RATE = 2e-4
@@ -32,8 +32,8 @@ if __name__ == '__main__':
     ENTROPY_REGULARIZATION = 1e-5
     ACTION_STD_LOW = 1e-2
     ACTION_STD_HIGH = 1
-    ACTION_MEAN_SCALE = 2
-    ACTION_BOUNDS = (-2, 2)
+    ACTION_MEAN_SCALE = 1
+    ACTION_BOUNDS = (-1, 1)
     REPLAY_BUFFER_SIZE = 5000
     LOG_EVERY = 10
     SAVE_MODEL_EVERY = 10
@@ -55,7 +55,7 @@ if __name__ == '__main__':
                       num_trajectories=NUM_TRAJECTORIES,
                       actor_network=actor,
                       replay_buffer=replay_buffer,
-                      render=False,
+                      render=True,
                       logger=logger)
 
     learner = OffPolicyLearner(actor=actor,
@@ -69,16 +69,13 @@ if __name__ == '__main__':
                                minibatch_size=BATCH_SIZE,
                                logger=logger)
 
-
-
-
     for t in range(5000):
         print("-" * 10, t, "-" * 10)
         sampler.collect_trajectories()
         learner.learn(replay_buffer)
         if t % SAVE_MODEL_EVERY == 0:
-            torch.save(actor.state_dict(), str(pathlib.Path().absolute()) + "/models_pendulum_V0/actor_" + str(t))
-            torch.save(critic.state_dict(), str(pathlib.Path().absolute()) + "/models_pendulum_V0/critic_" + str(t))
+            torch.save(actor.state_dict(), str(pathlib.Path().absolute()) + "/models/actor_" + str(t))
+            torch.save(critic.state_dict(), str(pathlib.Path().absolute()) + "/models/critic_" + str(t))
 
     # actor.load_state_dict(torch.load(str(pathlib.Path().absolute()) + "/models_pendulum_V0/actor_60"))
     # critic.load_state_dict(torch.load(str(pathlib.Path().absolute()) + "/models_pendulum_V0/critic_60"))
@@ -98,8 +95,3 @@ if __name__ == '__main__':
     #     if done:
     #         obs = torch.tensor(env.reset(), dtype=torch.float)
     #         print(np.mean(reward))
-
-
-
-
-

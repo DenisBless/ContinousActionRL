@@ -2,7 +2,7 @@ import torch
 
 
 class ActorLoss(torch.nn.Module):
-    def __init__(self, alpha=1.):
+    def __init__(self, alpha=1e-3):
         """
         Loss function for the actor.
         Args:
@@ -22,5 +22,5 @@ class ActorLoss(torch.nn.Module):
         Returns:
             Scalar actor loss value
         """
-        return - Q.mean()
-        # return - (Q + self.alpha * action_log_prob).mean()
+        # return - Q.mean()
+        return - (Q + self.alpha * action_log_prob).mean()

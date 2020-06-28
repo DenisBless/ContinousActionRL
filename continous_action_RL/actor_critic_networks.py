@@ -39,8 +39,7 @@ class Actor(torch.nn.Module):
                  mean_scale=1,
                  std_low=0.01,
                  std_high=1,
-                 action_bound=None,
-                 logger=None):
+                 action_bound=None):
         super(Actor, self).__init__()
         self.num_actions = num_actions
         self.num_obs = num_obs
@@ -51,9 +50,6 @@ class Actor(torch.nn.Module):
         self.input = torch.nn.Linear(num_obs, hidden_size1)
         self.hidden = torch.nn.Linear(hidden_size1, hidden_size2)
         self.output = torch.nn.Linear(hidden_size2, 2 * num_actions)
-
-        if logger is not None:
-            self.logger = logger
 
     def forward(self, observation):
         x = self.input(observation)
@@ -86,10 +82,12 @@ class Actor(torch.nn.Module):
         Returns:
             a ~ π(•|s), log N(a|μ(x)
         """
+        if self.training:  # setting the variance to zero when evaluating the model
+            eps = Normal(loc=torch.zeros_like(mean), scale=torch.ones_like(std)).sample()
+        else:
+            eps = Normal(loc=torch.zeros_like(mean), scale=torch.zeros_like(std)).sample()
 
-        eps = Normal(loc=torch.zeros_like(mean), scale=torch.ones_like(std)).sample()
         action_sample = std * eps + mean
-
         log_probs = self.get_log_prob(action_sample, mean, std)
 
         if self.action_bound:
@@ -114,9 +112,6 @@ class Actor(torch.nn.Module):
         std_unscaled = x[mid:] if x.dim() == 1 else x[:, :, mid:]
         std = (0.5 * (self.std_high - self.std_low)) * std_unscaled + 0.5 * (self.std_high + self.std_low)
 
-        if self.logger is not None:
-            self.logger.add_scalar("mean", mean)
-            self.logger.add_scalar("std", std)
         return mean, std
 
     def get_log_prob(self, action_sample, mean, std):

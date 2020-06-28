@@ -14,6 +14,7 @@ class OffPolicyLearner:
                  discount_factor=0.99,
                  actor_lr=2e-4,
                  critic_lr=2e-4,
+                 entropy_regularization=1e-3,
                  num_training_iter=100,
                  update_targnets_every=20,
                  expectation_samples=10,
@@ -40,7 +41,7 @@ class OffPolicyLearner:
         self.num_actions = actor.num_actions
         self.num_obs = actor.num_obs
 
-        self.actor_loss = ActorLoss()
+        self.actor_loss = ActorLoss(alpha=entropy_regularization)
         self.critic_loss = Retrace()
 
     def learn(self, replay_buffer):
@@ -119,6 +120,7 @@ class OffPolicyLearner:
 
                     self.logger.add_scalar(scalar_value=actor_loss.item(), tag="Actor_loss")
                     self.logger.add_scalar(scalar_value=critic_loss.item(), tag="Critic_loss")
+                    self.logger.add_scalar(scalar_value=std.mean().item(), tag="Action_std")
 
                 # Gradient update step
                 self.critic_opt.step()

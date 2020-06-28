@@ -134,7 +134,7 @@ class Retrace(torch.nn.Module):
 
             delta = r_t + gamma * expected_Q_next_t - target_Q_next_t
             decay = torch.cumprod(gamma * c_next_t, dim=1)
-            target = self.cumsum_reversed(delta * decay) / decay.clamp(min=1e-8)
+            target = self.cumsum_reversed(delta * decay) / decay.clamp(min=1e-10)
 
         return F.mse_loss(Q_t, target)
 
@@ -171,7 +171,7 @@ class Retrace(torch.nn.Module):
             "Error, shape mismatch. Shapes: target_policy_probs: " \
             + str(target_policy_probs.shape) + " mean: " + str(behaviour_policy_probs.shape)
 
-        return (target_policy_probs / behaviour_policy_probs.clamp(min=1e-10)).clamp(max=1)
+        return (target_policy_probs / behaviour_policy_probs).clamp(min=1e-10, max=1)
 
     # def retrace_recursiveOLD(self,
     #                          Q,
