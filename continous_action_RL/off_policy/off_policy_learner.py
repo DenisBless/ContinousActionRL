@@ -126,7 +126,7 @@ class OffPolicyLearner:
                     self.logger.add_scalar(scalar_value=actor_loss.item(), tag="Actor_loss")
                     self.logger.add_scalar(scalar_value=critic_loss.item(), tag="Critic_loss")
                     self.logger.add_scalar(scalar_value=std.mean().item(), tag="Action_std")
-                    self.logger.add_histogram(scalar_value=mean, tag="Action_mean")
+                    self.logger.add_histogram(values=mean, tag="Action_mean")
 
                 # Gradient update step
                 self.critic_opt.step()

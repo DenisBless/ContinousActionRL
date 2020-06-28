@@ -18,6 +18,16 @@ class Critic(torch.nn.Module):
         self.output = torch.nn.Linear(hidden_size2, 1)
 
     def forward(self, action, observation):
+        """
+        Critic network. Approx. the discounted sum of rewards for the current state s_t when taking action a_t.
+
+        Args:
+            action: a_t
+            observation: s_t
+
+        Returns:
+            Q(s_t, a_t)
+        """
         assert action.dim() == observation.dim(), \
             "Error, dimension mismatch. Dimensions: " \
             "action: " + str(action.dim()) + " observation: " + str(observation.dim())
@@ -69,11 +79,11 @@ class Actor(torch.nn.Module):
             std: σ(x)
 
         Returns:
-            a ~ π(•|s), log N(a|μ(x)
+            a ~ π(•|s), log N(a|μ(x), σ(x)^2)
         """
-        if self.training:  # setting the variance to zero when evaluating the model
+        if self.training:
             eps = Normal(loc=torch.zeros_like(mean), scale=torch.ones_like(std)).sample()
-        else:
+        else:  # setting the variance to zero when evaluating the model
             eps = Normal(loc=torch.zeros_like(mean), scale=torch.zeros_like(std)).sample()
 
         action_sample = std * eps + mean
@@ -109,16 +119,16 @@ class Actor(torch.nn.Module):
         Computes log N(a|μ(x), σ(x)^2) where a ~ π(•|s)
         Args:
             action_sample: a ~ π(•|s)
-            mean: μ
-            std: σ
+            mean: μ(x)
+            std: σ(x)
 
         Returns:
-            log N(a|μ, σ^2)
+            log N(a|μ(x), σ(x)^2)
         """
         assert action_sample.shape == mean.shape == std.shape, \
             "Error, shape mismatch. Shapes: action_sample: " \
             + str(action_sample.shape) + " mean: " + str(mean.shape) + " std: " + str(std.shape)
 
-        t1 = - ((mean - action_sample) ** 2) / (2 * std ** 2)
-        t2 = - torch.sqrt(torch.tensor(2 * np.pi, dtype=torch.float) * std)
+        t1 = - 0.5 * (((mean - action_sample) / std) ** 2)
+        t2 = - torch.sqrt(torch.tensor(2 * np.pi, dtype=torch.float)) * std
         return t1 + t2
