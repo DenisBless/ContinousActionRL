@@ -61,17 +61,6 @@ class Actor(torch.nn.Module):
         mean, std = self.get_normal_params(x)
         return mean, std
 
-    # def action_sample(self, mean, std, num_samples=1):
-    #     sample = torch.zeros_like(mean)
-    #     for i in range(num_samples):
-    #         eps = Normal(loc=torch.zeros_like(mean), scale=torch.ones_like(std)).sample()
-    #         sample += std * eps + mean
-    #
-    #     if self.action_bound:
-    #         return (sample / num_samples).clamp(min=self.action_bound[0], max=self.action_bound[1])
-    #     else:
-    #         return sample / num_samples
-
     def action_sample(self, mean, std):
         """
         Computes 𝔼_π[log N(a|μ(x), σ(x)^2)], 𝔼_π[log N(a|μ(x), σ(x)^2)]
@@ -114,7 +103,8 @@ class Actor(torch.nn.Module):
 
         return mean, std
 
-    def get_log_prob(self, action_sample, mean, std):
+    @staticmethod
+    def get_log_prob(action_sample, mean, std):
         """
         Computes log N(a|μ(x), σ(x)^2) where a ~ π(•|s)
         Args:

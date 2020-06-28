@@ -28,23 +28,27 @@ class Evaluator:
         self.actor.eval()  # Eval mode: Sets the action variance to zero, disables batch-norm and dropout etc.
 
         obs = torch.tensor(self.env.reset(), dtype=torch.float)
-        rewards = []
         with torch.no_grad():
             for i in range(self.num_samples):
-                mean, std = self.actor.forward(observation=obs)
+                rewards = []
+                done = False
+                while not done:
+                    mean, std = self.actor.forward(observation=obs)
 
-                action, action_log_prob = self.actor.action_sample(mean, torch.zeros_like(mean))
-                next_obs, reward, done, _ = self.env.step([action.item()])
-                rewards.append(reward)
-                obs = torch.tensor(next_obs, dtype=torch.float)
+                    action, action_log_prob = self.actor.action_sample(mean, torch.zeros_like(mean))
+                    next_obs, reward, done, _ = self.env.step([action.item()])
+                    rewards.append(reward)
+                    obs = torch.tensor(next_obs, dtype=torch.float)
 
-                if self.render:
-                    self.env.render()
+                    if self.render:
+                        self.env.render()
 
-                if done:
-                    obs = torch.tensor(self.env.reset(), dtype=torch.float)
-                    if self.logger is not None:
-                        self.logger.add_scalar("Mean reward", np.mean(reward))
+                    if done:
+                        obs = torch.tensor(self.env.reset(), dtype=torch.float)
+                        if self.logger is None:
+                            print("Mean reward: ", np.mean(rewards))
+                        else:
+                            self.logger.add_scalar("Mean reward", np.mean(rewards))
 
         self.actor.train()  # Back to train mode
 

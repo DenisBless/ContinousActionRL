@@ -103,6 +103,7 @@ class OffPolicyLearner:
                                                        target_policy_probs=torch.exp(target_action_log_prob.squeeze(-1)),
                                                        behaviour_policy_probs=torch.exp(action_prob_batch.squeeze(-1)),
                                                        recursive=True)
+
                 critic_loss.backward(retain_graph=True)
 
                 # Actor update
@@ -116,22 +117,18 @@ class OffPolicyLearner:
                 # Keep track of various values
                 if self.logger is not None and j % self.logger.log_every == 0:
                     # self.logger.log_DNN_params(self.actor, name="Actor")
-                    # self.logger.log_DNN_gradients(self.actor, name="Actor")
+                    self.logger.log_DNN_gradients(self.actor, name="Actor")
                     # self.logger.log_DNN_params(self.critic, name="Critic")
-                    # self.logger.log_DNN_gradients(self.critic, name="Critic")
+                    self.logger.log_DNN_gradients(self.critic, name="Critic")
 
                     self.logger.add_scalar(scalar_value=actor_loss.item(), tag="Actor_loss")
                     self.logger.add_scalar(scalar_value=critic_loss.item(), tag="Critic_loss")
                     self.logger.add_scalar(scalar_value=std.mean().item(), tag="Action_std")
+                    self.logger.add_histogram(scalar_value=mean, tag="Action_mean")
 
                 # Gradient update step
                 self.critic_opt.step()
                 self.actor_opt.step()
-
-                # print("-" * 30)
-                # print("actor_loss:", actor_loss.item())
-                # print("critic_loss:", critic_loss.item())
-                # print("reward:", torch.sum(reward_batch, dim=1)[-1].item())
 
             # Update the target networks
             self.update_targnets()

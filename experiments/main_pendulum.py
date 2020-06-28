@@ -25,11 +25,12 @@ if __name__ == '__main__':
     NUM_EVAL_TRAJECTORIES = 50
     NUM_TRAJECTORIES = 32
     BATCH_SIZE = 32
-    UPDATE_TARGNETS_EVERY = 1# 50
-    NUM_TRAINING_ITERATIONS = 1# 100
+    UPDATE_TARGNETS_EVERY = 30
+    NUM_TRAINING_ITERATIONS = 50
     TOTAL_TIMESTEPS = 1000
     ACTOR_LEARNING_RATE = 2e-4
     CRITIC_LEARNING_RATE = 2e-4
+    NUM_EXPECTATION_SAMPLES = 1
     ENTROPY_REGULARIZATION_ON = False
     ENTROPY_REGULARIZATION = 1e-5
     ACTION_STD_LOW = 1e-2
@@ -66,6 +67,7 @@ if __name__ == '__main__':
                                trajectory_length=TRAJECTORY_LENGTH,
                                actor_lr=ACTOR_LEARNING_RATE,
                                critic_lr=CRITIC_LEARNING_RATE,
+                               expectation_samples=NUM_EXPECTATION_SAMPLES,
                                entropy_regularization_on=ENTROPY_REGULARIZATION_ON,
                                entropy_regularization=ENTROPY_REGULARIZATION,
                                update_targnets_every=UPDATE_TARGNETS_EVERY,
