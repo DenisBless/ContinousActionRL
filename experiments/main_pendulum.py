@@ -24,11 +24,13 @@ if __name__ == '__main__':
     NUM_OBSERVATIONS = env.observation_space.shape[0]
     NUM_ACTIONS = env.action_space.shape[0]
     TRAJECTORY_LENGTH = 200
-    NUM_EVAL_TRAJECTORIES = 50
-    NUM_TRAJECTORIES = 300
-    BATCH_SIZE = 64
+    NUM_EVAL_TRAJECTORIES = 10
+    NUM_TRAJECTORIES = 500
+    BATCH_SIZE = 128
+    NUM_TRAJECTORIES = 20
+    BATCH_SIZE = 20
     UPDATE_TARGNETS_EVERY = 10
-    NUM_TRAINING_ITERATIONS = 30
+    NUM_TRAINING_ITERATIONS = 40
     TOTAL_TIMESTEPS = 1000
     ACTOR_LEARNING_RATE = 2e-4
     CRITIC_LEARNING_RATE = 2e-4
@@ -43,7 +45,7 @@ if __name__ == '__main__':
     REPLAY_BUFFER_SIZE = 10000
     LOG_EVERY = 10
     SAVE_MODEL_EVERY = 10
-    MODEL_SAVE_PATH = str(pathlib.Path().absolute()) + "/models/"
+    MODEL_SAVE_PATH = str(pathlib.Path(__file__).resolve().parents[1]) + "/models/"
 
     replay_buffer = ReplayBuffer(REPLAY_BUFFER_SIZE)
 

@@ -48,13 +48,13 @@ class Retrace(torch.nn.Module):
         """
 
         if recursive:
-            return self.retrace_recursive(Q=Q,
-                                          expected_target_Q=expected_target_Q,
-                                          target_Q=target_Q,
-                                          rewards=rewards,
-                                          target_policy_probs=target_policy_probs,
-                                          behaviour_policy_probs=behaviour_policy_probs,
-                                          gamma=gamma)
+            return self.retrace(Q=Q,
+                                expected_target_Q=expected_target_Q,
+                                target_Q=target_Q,
+                                rewards=rewards,
+                                target_policy_probs=target_policy_probs,
+                                behaviour_policy_probs=behaviour_policy_probs,
+                                gamma=gamma)
 
         else:
             return self.retrace_iterative(Q=Q,
@@ -64,6 +64,50 @@ class Retrace(torch.nn.Module):
                                           target_policy_probs=target_policy_probs,
                                           behaviour_policy_probs=behaviour_policy_probs,
                                           gamma=gamma)
+
+    def retrace(self,
+                Q,
+                expected_target_Q,
+                target_Q,
+                rewards,
+                target_policy_probs,
+                behaviour_policy_probs,
+                gamma=0.99):
+
+        """
+        For information on the parameters see class docs.
+
+        Computes the retrace loss recursively according to
+        L = 𝔼_τ[(Q_t - Q_ret_t)^2]
+        Q_ret_t = r_t + γ * (𝔼_π_target [Q(s_t+1,•)] + c_t+1 * Q_π_target(s_t+1,a_t+1)) + γ * c_t+1 * Q_ret_t+1
+
+        with trajectory τ = {(s_0, a_0, r_0),..,(s_k, a_k, r_k)}
+
+        Returns:
+            Scalar critic loss value.
+
+        """
+
+        T = Q.shape[1]  # total number of time steps in the trajectory
+
+        Q_t = Q[:, :-1]
+
+        with torch.no_grad():
+            # We don't want gradients from computing Q_ret, since:
+            # ∇φ (Q - Q_ret)^2 ∝ (Q - Q_ret) * ∇φ Q
+            r_t = rewards[:, :-1]
+            target_Q_next_t = target_Q[:, 1:]
+            expected_Q_next_t = expected_target_Q[:, 1:]
+            c_next_t = self.calc_retrace_weights(target_policy_probs, behaviour_policy_probs)[:, 1:]
+
+            Q_ret = torch.zeros_like(Q_t, device=self.device, dtype=torch.float)  # (B,T)
+            Q_ret[:, -1] = Q[:, -1]
+
+            for t in reversed(range(1, T - 1)):
+                Q_ret[:, t - 1] = r_t[:, t] + gamma * (expected_Q_next_t[:, t] - c_next_t[:, t] * target_Q_next_t[:, t]) \
+                                  + gamma * c_next_t[:, t] * Q_ret[:, t]
+
+        return F.mse_loss(Q_t, Q_ret)
 
     def retrace_iterative(self,
                           Q,

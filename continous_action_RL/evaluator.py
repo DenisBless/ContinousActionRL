@@ -7,7 +7,7 @@ class Evaluator:
                  env,
                  actor,
                  critic,
-                 save_path,
+                 save_path=None,
                  num_trajectories=10,
                  save_model_every=10,
                  logger=None,
@@ -44,8 +44,7 @@ class Evaluator:
                     action = action.to(self.device)
                     next_obs, reward, done, _ = self.env.step([action.item()])
                     rewards.append(reward)
-                    next_obs = torch.tensor(next_obs, dtype=torch.float).to(self.device)
-                    obs = torch.tensor(next_obs, dtype=torch.float)
+                    obs = torch.tensor(next_obs, dtype=torch.float).to(self.device)
 
                     if self.render:
                         self.env.render()
@@ -60,6 +59,6 @@ class Evaluator:
         self.actor.train()  # Back to train mode
 
         # Saving the model parameters
-        if self.num_evals % self.save_model_every == 0 and self.num_evals > 0:
+        if self.save_path is not None and self.num_evals % self.save_model_every == 0 and self.num_evals > 0:
             torch.save(self.actor.state_dict(), self.save_path + "actor_" + str(self.num_evals))
             torch.save(self.critic.state_dict(), self.save_path + "critic_" + str(self.num_evals))
