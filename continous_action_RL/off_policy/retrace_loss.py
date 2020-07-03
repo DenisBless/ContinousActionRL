@@ -215,7 +215,14 @@ class Retrace(torch.nn.Module):
             "Error, shape mismatch. Shapes: target_policy_probs: " \
             + str(target_policy_probs.shape) + " mean: " + str(behaviour_policy_probs.shape)
 
-        return (target_policy_probs / behaviour_policy_probs).clamp(min=1e-10, max=1)
+        if target_policy_probs.dim() > 2:
+            retrace_weights = (torch.prod(target_policy_probs, dim=-1) / torch.prod(behaviour_policy_probs, dim=-1)).clamp(min=1e-10, max=1)
+        else:
+            retrace_weights = (target_policy_probs / behaviour_policy_probs).clamp(min=1e-10, max=1)
+
+        assert not torch.isnan(retrace_weights).any(), "Error, a least one NaN value found in retrace weights."
+        return retrace_weights
+
 
     # def retrace_recursiveOLD(self,
     #                          Q,

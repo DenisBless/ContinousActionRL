@@ -8,14 +8,16 @@ class Critic(torch.nn.Module):
     def __init__(self,
                  num_actions,
                  num_obs,
-                 hidden_size1=64,
-                 hidden_size2=64):
+                 hidden_size1=128,
+                 hidden_size2=128,
+                 hidden_size3=64):
         super(Critic, self).__init__()
 
         self.num_actions = num_actions
         self.input = torch.nn.Linear(num_actions + num_obs, hidden_size1)
         self.hidden1 = torch.nn.Linear(hidden_size1, hidden_size2)
-        self.output = torch.nn.Linear(hidden_size2, 1)
+        self.hidden2 = torch.nn.Linear(hidden_size2, hidden_size3)
+        self.output = torch.nn.Linear(hidden_size3, 1)
 
     def forward(self, action, observation):
         """
@@ -34,6 +36,7 @@ class Critic(torch.nn.Module):
 
         x = F.elu(self.input(torch.cat((action, observation), dim=2)))  # dim 2 are the input features
         x = F.elu(self.hidden1(x))
+        x = F.elu(self.hidden2(x))
         x = self.output(x)
         return x
 
@@ -42,8 +45,9 @@ class Actor(torch.nn.Module):
     def __init__(self,
                  num_actions,
                  num_obs,
-                 hidden_size1=64,
-                 hidden_size2=64,
+                 hidden_size1=128,
+                 hidden_size2=128,
+                 hidden_size3=64,
                  mean_scale=1,
                  std_low=0.01,
                  std_high=1,
@@ -58,11 +62,13 @@ class Actor(torch.nn.Module):
         self.action_bound = action_bound
         self.input = torch.nn.Linear(num_obs, hidden_size1)
         self.hidden1 = torch.nn.Linear(hidden_size1, hidden_size2)
-        self.output = torch.nn.Linear(hidden_size2, 2 * num_actions)
+        self.hidden2 = torch.nn.Linear(hidden_size2, hidden_size3)
+        self.output = torch.nn.Linear(hidden_size3, 2 * num_actions)
 
     def forward(self, observation):
         x = F.elu(self.input(observation))
         x = F.elu(self.hidden1(x))
+        x = F.elu(self.hidden2(x))
         x = torch.tanh(self.output(x))
         mean, std = self.get_normal_params(x)
         return mean, std
@@ -83,12 +89,14 @@ class Actor(torch.nn.Module):
             eps = Normal(loc=torch.zeros_like(mean), scale=torch.zeros_like(std)).sample()
 
         action_sample = std * eps + mean
+
+        #
+        # if self.action_bound:
+        #     action_sample = action_sample.clamp(min=self.action_bound[0], max=self.action_bound[1])
+
         log_probs = self.get_log_prob(action_sample, mean, std)
 
-        if self.action_bound:
-            return action_sample.clamp(min=self.action_bound[0], max=self.action_bound[1]), log_probs
-        else:
-            return action_sample, log_probs
+        return action_sample, log_probs
 
     def get_normal_params(self, x):
         """

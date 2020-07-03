@@ -94,7 +94,8 @@ class OffPolicyLearner:
                 target_action_log_prob = self.target_actor.get_log_prob(action_batch, mean, std)
 
                 # a ~ π(•|s_t), log(π(a|s))
-                actions, action_log_prob = self.actor.forward(state_batch)
+                m, s = self.actor.forward(state_batch)
+                actions, action_log_prob = self.actor.action_sample(m, s)
                 actions.to(self.device)
 
                 # Q(a, s_t)
@@ -133,14 +134,19 @@ class OffPolicyLearner:
                 # Keep track of various values
                 if self.logger is not None and j % self.logger.log_every == 0:
                     # self.logger.log_DNN_params(self.actor, name="Actor")
-                    self.logger.log_DNN_gradients(self.actor, name="Actor")
+                    # self.logger.log_DNN_gradients(self.actor, name="Actor")
                     # self.logger.log_DNN_params(self.critic, name="Critic")
-                    self.logger.log_DNN_gradients(self.critic, name="Critic")
+                    # self.logger.log_DNN_gradients(self.critic, name="Critic")
 
-                    self.logger.add_scalar(scalar_value=actor_loss.item(), tag="Actor_loss")
-                    self.logger.add_scalar(scalar_value=critic_loss.item(), tag="Critic_loss")
-                    self.logger.add_scalar(scalar_value=std.mean().item(), tag="Action_std")
-                    self.logger.add_histogram(values=mean, tag="Action_mean")
+                    self.logger.add_scalar(scalar_value=actor_loss.item(), tag="Loss/Actor_loss", global_step=j)
+                    self.logger.add_scalar(scalar_value=critic_loss.item(), tag="Loss/Critic_loss", global_step=j)
+                    self.logger.add_scalar(scalar_value=std.mean().item(), tag="Action_std_mean", global_step=j)
+                    self.logger.add_histogram(values=mean, tag="Statistics/Action_mean", global_step=j)
+                    self.logger.add_histogram(values=std, tag="Statistics/Action_std", global_step=j)
+                    if self.num_actions > 1:
+                        self.logger.add_histogram(values=actions[:, :, 0], tag="Action/x", global_step=j)
+                        self.logger.add_histogram(values=actions[:, :, 1], tag="Action/y", global_step=j)
+                        self.logger.add_histogram(values=actions[:, :, 2], tag="Action/z", global_step=j)
 
                 self.critic_opt.step()
                 self.actor_opt.step()

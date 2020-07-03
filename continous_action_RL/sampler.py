@@ -31,7 +31,7 @@ class Sampler:
                 std = std.to(self.device)
                 action, action_log_prob = self.actor_network.action_sample(mean, std)
                 action = action.to(self.device)
-                next_obs, reward, done, _ = self.env.step([action.item()])
+                next_obs, reward, done, _ = self.env.step(action.detach().cpu().numpy())
                 next_obs = torch.tensor(next_obs, dtype=torch.float).to(self.device)
                 reward = torch.tensor(reward, dtype=torch.float).to(self.device)
                 states.append(obs)
@@ -49,6 +49,6 @@ class Sampler:
             action_log_probs = torch.stack(action_log_probs).to(self.device)
 
             if self.logger is not None and i % self.logger.log_every == 0:
-                self.logger.add_scalar(scalar_value=rewards.mean(), tag="sampler_reward")
+                self.logger.add_scalar(scalar_value=rewards.mean(), tag="Reward/train")
 
             self.replay_buffer.push(states, actions.detach(), rewards, action_log_probs.detach())

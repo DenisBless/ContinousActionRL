@@ -42,7 +42,7 @@ class Evaluator:
                     std = std.to(self.device)
                     action, action_log_prob = self.actor.action_sample(mean, std)
                     action = action.to(self.device)
-                    next_obs, reward, done, _ = self.env.step([action.item()])
+                    next_obs, reward, done, _ = self.env.step(action.detach().cpu().numpy())
                     rewards.append(reward)
                     obs = torch.tensor(next_obs, dtype=torch.float).to(self.device)
 
@@ -54,7 +54,7 @@ class Evaluator:
                         if self.logger is None:
                             print("Mean reward: ", np.mean(rewards))
                         else:
-                            self.logger.add_scalar("Mean reward", np.mean(rewards))
+                            self.logger.add_scalar("Reward/test", np.mean(rewards))
 
         self.actor.train()  # Back to train mode
 
