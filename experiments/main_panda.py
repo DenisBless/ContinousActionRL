@@ -1,49 +1,53 @@
-import torch
-
 from continous_action_RL.actor_critic_networks import Actor, Critic
 from continous_action_RL.off_policy.replay_buffer import ReplayBuffer
 from continous_action_RL.sampler import Sampler
 from continous_action_RL.evaluator import Evaluator
 from continous_action_RL.logger import Logger
 from continous_action_RL.off_policy.off_policy_learner import OffPolicyLearner
+from ALR_SF.SimulationFramework.simulation.src.gym_sf.mujoco.mujoco_envs.reach_env.reach_env import ReachEnv
 import pathlib
-import gym
+import torch
 import time
 
 if __name__ == '__main__':
 
-    """
-    Information on the Environment:
-    Actions - Dim: (1,); Value Range: [-1, 1]
-    Varying Trajectory Length of 1000 
-    Goal: Mountain car hits the top
-    """
-    env = gym.make("MountainCarContinuous-v0")
+    TRAJECTORY_LENGTH = 100
+    env = ReachEnv(max_steps=TRAJECTORY_LENGTH,
+                   control='mocap',
+                   coordinates='relative',
+                   action_smoothing=True,
+                   step_limitation='percentage',
+                   percentage=0.03,
+                   dt=1e-3,
+                   control_timesteps=100,
+                   randomize_objects=False,
+                   render=False)
 
     # PARAMETER
-    NUM_OBSERVATIONS = env.observation_space.shape[0]
-    NUM_ACTIONS = env.action_space.shape[0]
-    TRAJECTORY_LENGTH = 1000
+    NUM_OBSERVATIONS = env.observation_dim
+    NUM_ACTIONS = env.agent.action_dimension
     NUM_EVAL_TRAJECTORIES = 50
-    NUM_TRAJECTORIES = 300
+    NUM_TRAJECTORIES = 50
     BATCH_SIZE = 64
-    UPDATE_TARGNETS_EVERY = 10
-    NUM_TRAINING_ITERATIONS = 30
+    # NUM_TRAJECTORIES = 100
+    # BATCH_SIZE = 16
+    UPDATE_TARGNETS_EVERY = 20
+    NUM_TRAINING_ITERATIONS = 40
     TOTAL_TIMESTEPS = 1000
-    ACTOR_LEARNING_RATE = 2e-4
-    CRITIC_LEARNING_RATE = 2e-4
+    ACTOR_LEARNING_RATE = 2e-5
+    CRITIC_LEARNING_RATE = 2e-5
     GRADIENT_CLIPPING_VALUE = None
     NUM_EXPECTATION_SAMPLES = 1
     ENTROPY_REGULARIZATION_ON = False
-    ENTROPY_REGULARIZATION = 1e-5
-    ACTION_STD_LOW = 1e-1
+    ENTROPY_REGULARIZATION = 0
+    ACTION_STD_LOW = 2e-1
     ACTION_STD_HIGH = 1
-    ACTION_MEAN_SCALE = 2
-    ACTION_BOUNDS = (-2, 2)
+    ACTION_MEAN_SCALE = 1
+    ACTION_BOUNDS = (-1, 1)
     REPLAY_BUFFER_SIZE = 10000
     LOG_EVERY = 10
     SAVE_MODEL_EVERY = 10
-    MODEL_SAVE_PATH = str(pathlib.Path().absolute()) + "/models_pendulum/"
+    MODEL_SAVE_PATH = str(pathlib.Path(__file__).resolve().parents[1]) + "/models/"
 
     replay_buffer = ReplayBuffer(REPLAY_BUFFER_SIZE)
 
@@ -92,6 +96,11 @@ if __name__ == '__main__':
                           save_model_every=SAVE_MODEL_EVERY,
                           logger=logger,
                           render=False)
+
+    print("Cuda used:", torch.cuda.is_available())
+    for i in range(3):
+        # Filling the buffer
+        sampler.collect_trajectories()
 
     for t in range(TOTAL_TIMESTEPS):
         tm = time.time()

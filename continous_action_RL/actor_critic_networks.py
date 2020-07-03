@@ -35,7 +35,9 @@ class Critic(torch.nn.Module):
             "action: " + str(action.dim()) + " observation: " + str(observation.dim())
 
         x = F.elu(self.input(torch.cat((action, observation), dim=2)))  # dim 2 are the input features
+        x = F.layer_norm(x, normalized_shape=list(x.shape))
         x = F.elu(self.hidden1(x))
+        x = F.layer_norm(x, normalized_shape=list(x.shape))
         x = F.elu(self.hidden2(x))
         x = self.output(x)
         return x
@@ -67,8 +69,12 @@ class Actor(torch.nn.Module):
 
     def forward(self, observation):
         x = F.elu(self.input(observation))
+        x = F.layer_norm(x, normalized_shape=list(x.shape))
         x = F.elu(self.hidden1(x))
+        x = F.layer_norm(x, normalized_shape=list(x.shape))
         x = F.elu(self.hidden2(x))
+        x = F.layer_norm(x, normalized_shape=list(x.shape))
+
         x = torch.tanh(self.output(x))
         mean, std = self.get_normal_params(x)
         return mean, std

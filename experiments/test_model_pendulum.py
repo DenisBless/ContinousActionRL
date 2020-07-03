@@ -1,13 +1,8 @@
-from continous_action_RL.actor_critic_networks import Actor, Critic
-from continous_action_RL.off_policy.replay_buffer import ReplayBuffer
-from continous_action_RL.sampler import Sampler
-from continous_action_RL.evaluator import Evaluator
-from continous_action_RL.logger import Logger
-from continous_action_RL.off_policy.off_policy_learner import OffPolicyLearner
-import gym
 import pathlib
 import torch
-import time
+import gym
+from continous_action_RL.actor_critic_networks import Actor, Critic
+from continous_action_RL.evaluator import Evaluator
 
 if __name__ == '__main__':
 
@@ -26,7 +21,7 @@ if __name__ == '__main__':
     TRAJECTORY_LENGTH = 200
 
     MODEL_NAME = "actor_100"
-    MODEL_LOAD_PATH = str(pathlib.Path(__file__).resolve().parents[1]) + "/models/"
+    MODEL_LOAD_PATH = str(pathlib.Path(__file__).resolve().parents[1]) + "/models_pendulum/"
     NUM_EVAL_TRAJECTORIES = 10
     ACTION_STD_LOW = 1e-1
     ACTION_STD_HIGH = 1
