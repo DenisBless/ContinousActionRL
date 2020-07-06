@@ -39,6 +39,7 @@ class Critic(torch.nn.Module):
         x = F.elu(self.hidden1(x))
         x = F.layer_norm(x, normalized_shape=list(x.shape))
         x = F.elu(self.hidden2(x))
+        x = F.layer_norm(x, normalized_shape=list(x.shape))
         x = self.output(x)
         return x
 
@@ -133,12 +134,12 @@ class Actor(torch.nn.Module):
             std: σ(x)
 
         Returns:
-            log N(a|μ(x), σ(x)^2)
+            log N(a|μ(x), σ(x)^2) = - log[(√2π)σ] -1/2 (x - μ/σ)^2
         """
         assert action_sample.shape == mean.shape == std.shape, \
             "Error, shape mismatch. Shapes: action_sample: " \
             + str(action_sample.shape) + " mean: " + str(mean.shape) + " std: " + str(std.shape)
 
         t1 = - 0.5 * (((mean - action_sample) / std) ** 2)
-        t2 = - torch.sqrt(torch.tensor(2 * np.pi, dtype=torch.float)) * std
+        t2 = - torch.log(torch.sqrt(torch.tensor(2 * np.pi, dtype=torch.float)) * std)
         return t1 + t2

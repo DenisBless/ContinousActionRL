@@ -110,10 +110,9 @@ class OffPolicyLearner:
                                                        expected_target_Q=expected_target_Q.squeeze(-1),
                                                        target_Q=target_Q.squeeze(-1),
                                                        rewards=reward_batch.squeeze(-1),
-                                                       target_policy_probs=torch.exp(
-                                                           target_action_log_prob.squeeze(-1)),
-                                                       behaviour_policy_probs=torch.exp(action_prob_batch.squeeze(-1)),
-                                                       recursive=True)
+                                                       target_policy_probs=target_action_log_prob.squeeze(-1),
+                                                       behaviour_policy_probs=action_prob_batch.squeeze(-1),
+                                                       logger=self.logger)
 
                 critic_loss.backward(retain_graph=True)
 
@@ -133,10 +132,10 @@ class OffPolicyLearner:
 
                 # Keep track of various values
                 if self.logger is not None and j % self.logger.log_every == 0:
-                    # self.logger.log_DNN_params(self.actor, name="Actor")
-                    # self.logger.log_DNN_gradients(self.actor, name="Actor")
-                    # self.logger.log_DNN_params(self.critic, name="Critic")
-                    # self.logger.log_DNN_gradients(self.critic, name="Critic")
+                    self.logger.log_DNN_params(self.actor, name="Actor")
+                    self.logger.log_DNN_gradients(self.actor, name="Actor")
+                    self.logger.log_DNN_params(self.critic, name="Critic")
+                    self.logger.log_DNN_gradients(self.critic, name="Critic")
 
                     self.logger.add_scalar(scalar_value=actor_loss.item(), tag="Loss/Actor_loss", global_step=j)
                     self.logger.add_scalar(scalar_value=critic_loss.item(), tag="Loss/Critic_loss", global_step=j)
