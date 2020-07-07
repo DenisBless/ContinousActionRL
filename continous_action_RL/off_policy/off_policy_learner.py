@@ -132,10 +132,10 @@ class OffPolicyLearner:
 
                 # Keep track of various values
                 if self.logger is not None and j % self.logger.log_every == 0:
-                    self.logger.log_DNN_params(self.actor, name="Actor")
-                    self.logger.log_DNN_gradients(self.actor, name="Actor")
-                    self.logger.log_DNN_params(self.critic, name="Critic")
-                    self.logger.log_DNN_gradients(self.critic, name="Critic")
+                    # self.logger.log_DNN_params(self.actor, name="Actor")
+                    # self.logger.log_DNN_gradients(self.actor, name="Actor")
+                    # self.logger.log_DNN_params(self.critic, name="Critic")
+                    # self.logger.log_DNN_gradients(self.critic, name="Critic")
 
                     self.logger.add_scalar(scalar_value=actor_loss.item(), tag="Loss/Actor_loss", global_step=j)
                     self.logger.add_scalar(scalar_value=critic_loss.item(), tag="Loss/Critic_loss", global_step=j)
@@ -149,9 +149,12 @@ class OffPolicyLearner:
 
                 self.critic_opt.step()
                 self.actor_opt.step()
+                # if j % (self.update_targnets_every - 1)  == 0 and j > 0:
 
             # Update the target networks
             self.update_targnets()
+
+        replay_buffer.clear()
 
     def update_targnets(self):
         """

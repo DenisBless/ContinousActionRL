@@ -8,16 +8,14 @@ class Critic(torch.nn.Module):
     def __init__(self,
                  num_actions,
                  num_obs,
-                 hidden_size1=128,
-                 hidden_size2=128,
-                 hidden_size3=64):
+                 hidden_size1=64,
+                 hidden_size2=64):
         super(Critic, self).__init__()
 
         self.num_actions = num_actions
         self.input = torch.nn.Linear(num_actions + num_obs, hidden_size1)
         self.hidden1 = torch.nn.Linear(hidden_size1, hidden_size2)
-        self.hidden2 = torch.nn.Linear(hidden_size2, hidden_size3)
-        self.output = torch.nn.Linear(hidden_size3, 1)
+        self.output = torch.nn.Linear(hidden_size2, 1)
 
     def forward(self, action, observation):
         """
@@ -38,8 +36,6 @@ class Critic(torch.nn.Module):
         x = F.layer_norm(x, normalized_shape=list(x.shape))
         x = F.elu(self.hidden1(x))
         x = F.layer_norm(x, normalized_shape=list(x.shape))
-        x = F.elu(self.hidden2(x))
-        x = F.layer_norm(x, normalized_shape=list(x.shape))
         x = self.output(x)
         return x
 
@@ -48,9 +44,8 @@ class Actor(torch.nn.Module):
     def __init__(self,
                  num_actions,
                  num_obs,
-                 hidden_size1=128,
-                 hidden_size2=128,
-                 hidden_size3=64,
+                 hidden_size1=64,
+                 hidden_size2=64,
                  mean_scale=1,
                  std_low=0.01,
                  std_high=1,
@@ -65,18 +60,17 @@ class Actor(torch.nn.Module):
         self.action_bound = action_bound
         self.input = torch.nn.Linear(num_obs, hidden_size1)
         self.hidden1 = torch.nn.Linear(hidden_size1, hidden_size2)
-        self.hidden2 = torch.nn.Linear(hidden_size2, hidden_size3)
-        self.output = torch.nn.Linear(hidden_size3, 2 * num_actions)
+        self.output = torch.nn.Linear(hidden_size2, 2 * num_actions)
+        self.hardtanh = torch.nn.Hardtanh(min_val=-1, max_val=1)
 
     def forward(self, observation):
         x = F.elu(self.input(observation))
         x = F.layer_norm(x, normalized_shape=list(x.shape))
         x = F.elu(self.hidden1(x))
         x = F.layer_norm(x, normalized_shape=list(x.shape))
-        x = F.elu(self.hidden2(x))
-        x = F.layer_norm(x, normalized_shape=list(x.shape))
 
         x = torch.tanh(self.output(x))
+        # x = self.hardtanh(self.output(x))
         mean, std = self.get_normal_params(x)
         return mean, std
 
@@ -134,12 +128,12 @@ class Actor(torch.nn.Module):
             std: σ(x)
 
         Returns:
-            log N(a|μ(x), σ(x)^2) = - log[(√2π)σ] -1/2 (x - μ/σ)^2
+            log N(a|μ(x), σ(x)^2) = - log[(√2π)σ] - 1/2 (x - μ/σ)^2
         """
         assert action_sample.shape == mean.shape == std.shape, \
             "Error, shape mismatch. Shapes: action_sample: " \
             + str(action_sample.shape) + " mean: " + str(mean.shape) + " std: " + str(std.shape)
 
-        t1 = - 0.5 * (((mean - action_sample) / std) ** 2)
+        t1 = - 0.5 * torch.pow(((mean - action_sample) / std), exponent=2)
         t2 = - torch.log(torch.sqrt(torch.tensor(2 * np.pi, dtype=torch.float)) * std)
         return t1 + t2

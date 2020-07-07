@@ -61,8 +61,11 @@ class Retrace(torch.nn.Module):
             expected_Q_next_t = expected_target_Q[:, 1:]
 
             c_next_t = self.calc_retrace_weights2(target_policy_probs, behaviour_policy_probs)[:, 1:]
+            # print(c_next_t.mean(), c_next_t.std())
             if logger is not None:
-                logger.add_histogram(tag="retrace", values=c_next_t)
+                logger.add_histogram(tag="retrace/ratio", values=c_next_t)
+                logger.add_histogram(tag="retrace/behaviour", values=torch.exp(behaviour_policy_probs))
+                logger.add_histogram(tag="retrace/target", values=torch.exp(target_policy_probs))
 
             Q_ret = torch.zeros_like(Q_t, device=self.device, dtype=torch.float)  # (B,T)
             Q_ret[:, -1] = target_Q_next_t[:, -1]
@@ -113,8 +116,8 @@ class Retrace(torch.nn.Module):
         b: behaviour policy probabilities
 
         Args:
-            target_policy_logprob: π_target(a_t|s_t)
-            behaviour_policy_logprob: b(a_t|s_t)
+            target_policy_logprob: log π_target(a_t|s_t)
+            behaviour_policy_logprob: log b(a_t|s_t)
 
         Returns:
             retrace weights c
@@ -130,9 +133,5 @@ class Retrace(torch.nn.Module):
             retrace_weights = (target_policy_logprob - behaviour_policy_logprob).clamp(max=0)
 
         assert not torch.isnan(retrace_weights).any(), "Error, a least one NaN value found in retrace weights."
-        return torch.exp(retrace_weights)
-
-
-"""
-
-"""
+        # return torch.exp(retrace_weights)
+        return torch.pow(torch.exp(retrace_weights), 1/3)
