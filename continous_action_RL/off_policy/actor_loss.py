@@ -40,7 +40,7 @@ class ActorLoss(torch.nn.Module):
         """
         t1 = torch.log(torch.pow(std, 2)) - torch.log(torch.pow(old_std, 2))
         t2 = (torch.pow(old_std, 2) + torch.pow(old_mean - mean, 2)) / torch.pow(std, 2)
-        return torch.sum(t1 + t2 - 1, dim=-1) if mean.dim > 2 else t1 + t2 - 1
+        return torch.sum(t1 + t2 - 1, dim=-1) if mean.dim() > 2 else t1 + t2 - 1
 
 
 
