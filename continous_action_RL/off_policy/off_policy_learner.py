@@ -105,8 +105,8 @@ class OffPolicyLearner:
             actions, action_log_prob = self.actor.action_sample(m, s)
             actions.to(self.device)
             if i == 0:
-                old_mean = mean.detach()
-                old_std = std.detach()
+                old_mean = m.detach()
+                old_std = s.detach()
 
             # Q(a, s_t)
             current_Q = self.critic.forward(actions, state_batch)
@@ -134,7 +134,7 @@ class OffPolicyLearner:
             actor_loss = self.actor_loss.forward(Q=current_Q.squeeze(-1),
                                                  action_log_prob=action_log_prob.squeeze(-1))
 
-            kl_div = self.actor_loss.kl_divergence(old_mean=old_mean, old_std=old_std, mean=mean, std=std)
+            kl_div = self.actor_loss.kl_divergence(old_mean=old_mean, old_std=old_std, mean=m, std=s)
             actor_loss += self.trust_region_coeff * kl_div
             actor_loss.backward()
 
