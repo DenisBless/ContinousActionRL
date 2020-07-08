@@ -33,15 +33,16 @@ if __name__ == '__main__':
     # NUM_TRAJECTORIES = 16
     # BATCH_SIZE = 16
     # NUM_BUFFER_FRONTLOAD = 0
-    UPDATE_TARGNETS_EVERY = 20
+    UPDATE_TARGNETS_EVERY = 50
     NUM_TRAINING_ITERATIONS = 40
     TOTAL_TIMESTEPS = 1000
-    ACTOR_LEARNING_RATE = 2e-6
+    ACTOR_LEARNING_RATE = 2e-5
     CRITIC_LEARNING_RATE = 2e-5
     GRADIENT_CLIPPING_VALUE = 0.5
     NUM_EXPECTATION_SAMPLES = 1
     ENTROPY_REGULARIZATION_ON = False
     ENTROPY_REGULARIZATION = 0
+    TRUST_REGION_COEFF = 0
     ACTION_STD_LOW = 5e-1
     ACTION_STD_HIGH = 1
     ACTION_MEAN_SCALE = 1
@@ -84,6 +85,7 @@ if __name__ == '__main__':
                                expectation_samples=NUM_EXPECTATION_SAMPLES,
                                entropy_regularization_on=ENTROPY_REGULARIZATION_ON,
                                entropy_regularization=ENTROPY_REGULARIZATION,
+                               trust_region_coeff=TRUST_REGION_COEFF,
                                gradient_clip_val=GRADIENT_CLIPPING_VALUE,
                                update_targnets_every=UPDATE_TARGNETS_EVERY,
                                num_training_iter=NUM_TRAINING_ITERATIONS,
