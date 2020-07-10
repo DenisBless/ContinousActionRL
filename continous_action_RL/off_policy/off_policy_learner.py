@@ -14,14 +14,13 @@ class OffPolicyLearner:
                  discount_factor=0.99,
                  actor_lr=2e-4,
                  critic_lr=2e-4,
-                 entropy_regularization_on=True,
                  entropy_regularization=1e-3,
                  trust_region_coeff=0,
                  gradient_clip_val=None,
                  num_training_iter=100,
                  update_targnets_every=20,
                  expectation_samples=10,
-                 minibatch_size=8,
+                 minibatch_size=32,
                  logger=None):
 
         self.device = "cuda:0" if torch.cuda.is_available() else "cpu"
@@ -51,8 +50,7 @@ class OffPolicyLearner:
 
         self.trust_region_coeff = trust_region_coeff
 
-        self.actor_loss = ActorLoss(entropy_regularization_on=entropy_regularization_on,
-                                    alpha=entropy_regularization, trust_region_coeff=trust_region_coeff)
+        self.actor_loss = ActorLoss(alpha=entropy_regularization)
         self.critic_loss = Retrace()
 
     def learn(self, replay_buffer):
@@ -153,8 +151,6 @@ class OffPolicyLearner:
                 self.logger.add_scalar(scalar_value=actor_loss.item(), tag="Loss/Actor_loss", global_step=self.log_step)
                 self.logger.add_scalar(scalar_value=critic_loss.item(), tag="Loss/Critic_loss",
                                        global_step=self.log_step)
-                # self.logger.add_scalar(scalar_value=self.trust_region_coeff * kl_div.item(), tag="Loss/KL_Divergence",
-                #                        global_step=self.log_step)
                 self.logger.add_scalar(scalar_value=std.mean().item(), tag="Action_std_mean", global_step=self.log_step)
                 self.logger.add_histogram(values=mean, tag="Statistics/Action_mean", global_step=self.log_step)
                 self.logger.add_histogram(values=std, tag="Statistics/Action_std", global_step=self.log_step)

@@ -9,10 +9,12 @@ class Critic(torch.nn.Module):
                  num_actions,
                  num_obs,
                  hidden_size1=64,
-                 hidden_size2=64):
+                 hidden_size2=64,
+                 layer_norm=False):
         super(Critic, self).__init__()
 
         self.num_actions = num_actions
+        self.layer_norm = layer_norm
         self.input = torch.nn.Linear(num_actions + num_obs, hidden_size1)
         self.hidden1 = torch.nn.Linear(hidden_size1, hidden_size2)
         self.output = torch.nn.Linear(hidden_size2, 1)
@@ -33,9 +35,9 @@ class Critic(torch.nn.Module):
             "action: " + str(action.dim()) + " observation: " + str(observation.dim())
 
         x = F.elu(self.input(torch.cat((action, observation), dim=2)))  # dim 2 are the input features
-        x = F.layer_norm(x, normalized_shape=list(x.shape))
+        x = F.layer_norm(x, normalized_shape=list(x.shape)) if self.layer_norm else x
         x = F.elu(self.hidden1(x))
-        x = F.layer_norm(x, normalized_shape=list(x.shape))
+        x = F.layer_norm(x, normalized_shape=list(x.shape)) if self.layer_norm else x
         x = self.output(x)
         return x
 
@@ -49,11 +51,13 @@ class Actor(torch.nn.Module):
                  mean_scale=1,
                  std_low=0.01,
                  std_high=1,
-                 action_bound=None):
+                 action_bound=None,
+                 layer_norm=False):
 
         super(Actor, self).__init__()
         self.num_actions = num_actions
         self.num_obs = num_obs
+        self.layer_norm = layer_norm
         self.mean_scale = mean_scale
         self.std_low = std_low
         self.std_high = std_high
@@ -65,10 +69,9 @@ class Actor(torch.nn.Module):
 
     def forward(self, observation):
         x = F.elu(self.input(observation))
-        x = F.layer_norm(x, normalized_shape=list(x.shape))
+        x = F.layer_norm(x, normalized_shape=list(x.shape)) if self.layer_norm else x
         x = F.elu(self.hidden1(x))
-        x = F.layer_norm(x, normalized_shape=list(x.shape))
-
+        x = F.layer_norm(x, normalized_shape=list(x.shape)) if self.layer_norm else x
         x = torch.tanh(self.output(x))
         # x = self.hardtanh(self.output(x))
         mean, std = self.get_normal_params(x)

@@ -3,16 +3,13 @@ import torch
 
 class ActorLoss(torch.nn.Module):
     def __init__(self,
-                 entropy_regularization_on=False,
-                 trust_region_coeff = 1e-6,
-                 alpha=1e-3):
+                 alpha=0):
         """
         Loss function for the actor.
         Args:
             alpha: entropy regularization parameter.
         """
         super(ActorLoss, self).__init__()
-        self.entropy_regularization_on = entropy_regularization_on
         self.alpha = alpha
 
     def forward(self, Q, action_log_prob):
@@ -26,10 +23,7 @@ class ActorLoss(torch.nn.Module):
         Returns:
             Scalar actor loss value
         """
-        if self.entropy_regularization_on:
-            return - (Q - self.alpha * action_log_prob).mean()
-        else:
-            return - Q.mean()
+        return - (Q - self.alpha * action_log_prob).mean()
 
     def kl_divergence(self, old_mean, old_std, mean, std):
         """

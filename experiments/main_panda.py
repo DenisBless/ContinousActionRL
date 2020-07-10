@@ -116,7 +116,6 @@ if __name__ == '__main__':
                                actor_lr=args.actor_lr,
                                critic_lr=args.critic_lr,
                                expectation_samples=args.num_expectation_samples,
-                               entropy_regularization_on=ENTROPY_REGULARIZATION_ON,
                                entropy_regularization=args.entropy_reg,
                                trust_region_coeff=args.trust_region_coeff,
                                gradient_clip_val=args.global_gradient_norm,
