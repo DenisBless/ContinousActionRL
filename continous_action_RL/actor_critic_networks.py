@@ -141,9 +141,9 @@ class Actor(torch.nn.Module):
         t2 = - torch.log(torch.sqrt(torch.tensor(2 * np.pi, dtype=torch.float)) * std)
         return t1 + t2
 
-    def sample(self, mean, std):
-        dist = torch.distributions.Normal(loc=mean, scale=std)
-        return dist.rsample()
-
-    def log_probs(self, dist):
-        return dist.log_prob()
+    # def sample(self, mean, std):
+    #     dist = torch.distributions.Normal(loc=mean, scale=std)
+    #     return dist.rsample()
+    #
+    # def log_probs(self, dist):
+    #     return dist.log_prob()

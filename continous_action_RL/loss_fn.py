@@ -60,7 +60,7 @@ class Retrace(torch.nn.Module):
             target_Q_next_t = target_Q[:, 1:]
             expected_Q_next_t = expected_target_Q[:, 1:]
 
-            c_next_t = self.calc_retrace_weights2(target_policy_probs, behaviour_policy_probs)[:, 1:]
+            c_next_t = self.calc_retrace_weights(target_policy_probs, behaviour_policy_probs)[:, 1:]
             # print(c_next_t.mean(), c_next_t.std())
             if logger is not None:
                 logger.add_histogram(tag="retrace/ratio", values=c_next_t)
@@ -77,38 +77,7 @@ class Retrace(torch.nn.Module):
         return F.mse_loss(Q_t, Q_ret)
 
     @staticmethod
-    def calc_retrace_weights(target_policy_probs, behaviour_policy_probs):
-        """
-        Calculates the retrace weights (truncated importance weights) c according to:
-        c_t = min(1, π_target(a_t|s_t) / b(a_t|s_t)) where:
-        π_target: target policy probabilities
-        b: behaviour policy probabilities
-
-        Args:
-            target_policy_probs: π_target(a_t|s_t)
-            behaviour_policy_probs: b(a_t|s_t)
-
-        Returns:
-            retrace weights c
-        """
-        assert target_policy_probs.shape == behaviour_policy_probs.shape, \
-            "Error, shape mismatch. Shapes: target_policy_probs: " \
-            + str(target_policy_probs.shape) + " mean: " + str(behaviour_policy_probs.shape)
-
-        eps = 1e-6
-
-        if target_policy_probs.dim() > 2:
-            retrace_weights = (
-                    torch.prod(target_policy_probs, dim=-1) / (torch.prod(behaviour_policy_probs, dim=-1) + eps)).clamp(
-                max=1)
-        else:
-            retrace_weights = (target_policy_probs / (behaviour_policy_probs + 1e-6)).clamp(max=1)
-
-        assert not torch.isnan(retrace_weights).any(), "Error, a least one NaN value found in retrace weights."
-        return retrace_weights
-
-    @staticmethod
-    def calc_retrace_weights2(target_policy_logprob, behaviour_policy_logprob):
+    def calc_retrace_weights(target_policy_logprob, behaviour_policy_logprob):
         """
         Calculates the retrace weights (truncated importance weights) c according to:
         c_t = min(1, π_target(a_t|s_t) / b(a_t|s_t)) where:
@@ -133,6 +102,40 @@ class Retrace(torch.nn.Module):
             retrace_weights = (target_policy_logprob - behaviour_policy_logprob).clamp(max=0)
 
         assert not torch.isnan(retrace_weights).any(), "Error, a least one NaN value found in retrace weights."
-        # return torch.exp(retrace_weights)
-        # return torch.pow(torch.exp(retrace_weights), 1/3)
         return torch.exp(retrace_weights)
+
+
+class ActorLoss(torch.nn.Module):
+    def __init__(self,
+                 alpha=0):
+        """
+        Loss function for the actor.
+        Args:
+            alpha: entropy regularization parameter.
+        """
+        super(ActorLoss, self).__init__()
+        self.alpha = alpha
+
+    def forward(self, Q, action_log_prob):
+        """
+        Computes the loss of the actor according to
+        L = 𝔼_π [Q(a,s) - α log(π(a|s)]
+        Args:
+            Q: Q(a,s)
+            action_log_prob: log(π(a|s)
+
+        Returns:
+            Scalar actor loss value
+        """
+        return - (Q - self.alpha * action_log_prob).mean()
+
+    def kl_divergence(self, old_mean, old_std, mean, std):
+        """
+        Computes:
+        D_KL(π_old(a|s)||π(a|s)) = ∑_i D_KL(π_old(a_i|s)||π(a_i|s))
+        where π(a_i|s) = N(a|μ, σ^2)
+        and D_KL(π_old(a_i|s)||π(a_i|s)) = 1/2 * (log(σ^2/σ_old^2) + [σ_old^2 + (μ_old - μ)^2]/σ^2 -1)
+        """
+        t1 = torch.log(torch.pow(std, 2)) - torch.log(torch.pow(old_std, 2))
+        t2 = (torch.pow(old_std, 2) + torch.pow(old_mean - mean, 2)) / torch.pow(std, 2)
+        return torch.sum(t1 + t2 - 1)

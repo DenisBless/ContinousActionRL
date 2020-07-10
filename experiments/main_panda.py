@@ -25,6 +25,8 @@ parser.add_argument('--actor_lr', type=float, default=2e-4,
                     help='Learning rate for the actor network.')
 parser.add_argument('--critic_lr', type=float, default=2e-4,
                     help='Learning rate for the critic network.')
+parser.add_argument('--layer_norm', type=bool, default=False,
+                    help='Includes a layer norm between FC layer in the actor and critic network.')
 parser.add_argument('--global_gradient_norm', type=float, default=0.5,
                     help='Enables gradient clipping with a specified global parameter L2 norm')
 parser.add_argument('--num_expectation_samples', type=int, default=1,
