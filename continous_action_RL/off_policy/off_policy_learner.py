@@ -133,9 +133,9 @@ class OffPolicyLearner:
 
             actor_loss = self.actor_loss.forward(Q=current_Q.squeeze(-1),
                                                  action_log_prob=action_log_prob.squeeze(-1))
-
-            kl_div = self.actor_loss.kl_divergence(old_mean=old_mean, old_std=old_std, mean=m, std=s)
-            actor_loss += self.trust_region_coeff * kl_div
+            #
+            # kl_div = self.actor_loss.kl_divergence(old_mean=old_mean, old_std=old_std, mean=m, std=s)
+            # actor_loss += self.trust_region_coeff * kl_div
             actor_loss.backward()
 
             # Gradient update step with gradient clipping
@@ -153,8 +153,8 @@ class OffPolicyLearner:
                 self.logger.add_scalar(scalar_value=actor_loss.item(), tag="Loss/Actor_loss", global_step=self.log_step)
                 self.logger.add_scalar(scalar_value=critic_loss.item(), tag="Loss/Critic_loss",
                                        global_step=self.log_step)
-                self.logger.add_scalar(scalar_value=self.trust_region_coeff * kl_div.item(), tag="Loss/KL_Divergence",
-                                       global_step=self.log_step)
+                # self.logger.add_scalar(scalar_value=self.trust_region_coeff * kl_div.item(), tag="Loss/KL_Divergence",
+                #                        global_step=self.log_step)
                 self.logger.add_scalar(scalar_value=std.mean().item(), tag="Action_std_mean", global_step=self.log_step)
                 self.logger.add_histogram(values=mean, tag="Statistics/Action_mean", global_step=self.log_step)
                 self.logger.add_histogram(values=std, tag="Statistics/Action_std", global_step=self.log_step)

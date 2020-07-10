@@ -134,4 +134,5 @@ class Retrace(torch.nn.Module):
 
         assert not torch.isnan(retrace_weights).any(), "Error, a least one NaN value found in retrace weights."
         # return torch.exp(retrace_weights)
-        return torch.pow(torch.exp(retrace_weights), 1/3)
+        # return torch.pow(torch.exp(retrace_weights), 1/3)
+        return torch.exp(retrace_weights)
