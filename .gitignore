@@ -12,3 +12,4 @@ continous_action_RL/models_pendulum_V0
 /.idea
 **/__pycache__/
 
+scp.sh

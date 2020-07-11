@@ -31,27 +31,24 @@ class Evaluator:
         self.num_evals += 1
         self.actor.eval()  # Eval mode: Sets the action variance to zero, disables batch-norm and dropout etc.
 
-        obs = torch.tensor(self.env.reset(), dtype=torch.float)
-        obs = obs.to(self.device)
+
         with torch.no_grad():
             for i in range(self.num_samples):
+                obs = torch.tensor(self.env.reset(), dtype=torch.float)
                 rewards = []
                 done = False
                 while not done:
+                    obs = obs.cuda() if self.use_gpu else obs
                     mean, std = self.actor.forward(observation=obs)
-                    mean = mean.to(self.device)
-                    std = std.to(self.device)
                     action, action_log_prob = self.actor.action_sample(mean, std)
-                    action = action.to(self.device)
                     next_obs, reward, done, _ = self.env.step(action.detach().cpu().numpy())
                     rewards.append(reward)
-                    obs = torch.tensor(next_obs, dtype=torch.float).to(self.device)
+                    obs = torch.tensor(next_obs, dtype=torch.float)
 
                     if self.render:
                         self.env.render()
 
                     if done:
-                        obs = torch.tensor(self.env.reset(), dtype=torch.float).to(self.device)
                         if self.logger is None:
                             print("Mean reward: ", np.mean(rewards))
                         else:
