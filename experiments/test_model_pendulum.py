@@ -26,7 +26,7 @@ if __name__ == '__main__':
     TRAJECTORY_LENGTH = 200
 
     MODEL_NAME = "actor_100"
-    MODEL_LOAD_PATH = str(pathlib.Path(__file__).resolve().parents[1]) + "/models/"
+    MODEL_LOAD_PATH = "./models/"
     NUM_EVAL_TRAJECTORIES = 10
     ACTION_STD_LOW = 1e-1
     ACTION_STD_HIGH = 1

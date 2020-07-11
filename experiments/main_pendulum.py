@@ -54,7 +54,7 @@ if __name__ == '__main__':
     BATCH_SIZE = 20
     UPDATE_TARGNETS_EVERY = 10
     NUM_TRAINING_ITERATIONS = 40
-    TOTAL_TIMESTEPS = 1000
+    TOTAL_TIMESTEPS = 100
     ACTOR_LEARNING_RATE = 2e-4
     CRITIC_LEARNING_RATE = 2e-4
     GRADIENT_CLIPPING_VALUE = None
@@ -67,7 +67,7 @@ if __name__ == '__main__':
     ACTION_BOUNDS = (-2, 2)
     REPLAY_BUFFER_SIZE = 10000
     LOG_EVERY = 10
-    SAVE_MODEL_EVERY = 10
+    SAVE_MODEL_EVERY = 5
     MODEL_SAVE_PATH = "./models/"
 
     use_gpu = check_gpu(GPU_DEVICE)
