@@ -1,12 +1,11 @@
 import copy
 
 import torch
-from continous_action_RL.off_policy.actor_loss import ActorLoss
-from continous_action_RL.off_policy.retrace_loss import Retrace
+from continous_action_RL.loss_fn import ActorLoss, Retrace
 from continous_action_RL.utils import Utils
 
 
-class OffPolicyLearner:
+class Learner:
     def __init__(self,
                  actor,
                  critic,
@@ -163,8 +162,8 @@ class OffPolicyLearner:
             self.critic_opt.step()
             self.actor_opt.step()
 
-            old_mean = m.detach()
-            old_std = std.detach()
+            # old_mean = m.detach()
+            # old_std = std.detach()
 
     def update_targnets(self):
         """

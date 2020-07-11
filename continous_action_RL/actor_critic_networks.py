@@ -48,6 +48,7 @@ class Actor(torch.nn.Module):
                  num_obs,
                  hidden_size1=64,
                  hidden_size2=64,
+                 out_layer='linear',
                  mean_scale=1,
                  std_low=0.01,
                  std_high=1,
@@ -59,6 +60,7 @@ class Actor(torch.nn.Module):
         self.num_obs = num_obs
         self.layer_norm = layer_norm
         self.mean_scale = mean_scale
+        self.out_layer = out_layer
         self.std_low = std_low
         self.std_high = std_high
         self.action_bound = action_bound
@@ -71,10 +73,18 @@ class Actor(torch.nn.Module):
         x = F.elu(self.input(observation))
         x = F.layer_norm(x, normalized_shape=list(x.shape)) if self.layer_norm else x
         x = F.elu(self.hidden1(x))
-        x = F.layer_norm(x, normalized_shape=list(x.shape)) if self.layer_norm else x
-        x = torch.tanh(self.output(x))
-        # x = self.hardtanh(self.output(x))
-        mean, std = self.get_normal_params(x)
+        if self.out_layer == 'tanh':
+            x = F.layer_norm(x, normalized_shape=list(x.shape)) if self.layer_norm else x
+            x = torch.tanh(self.output(x))
+            mean, std = self.get_normal_params(x)
+        elif self.out_layer == 'linear':
+            x = self.output(x)
+            mean = x[:self.num_actions] if x.dim() == 1 else x[:, :, :self.num_actions]
+            mean = mean.clamp(min=-self.mean_scale, max=self.mean_scale)
+            std = x[self.num_actions:] if x.dim() == 1 else x[:, :, self.num_actions:]
+            std = std.clamp(min=self.std_low, max=self.std_high)
+        else:
+            raise ValueError("Error, choose a valid output layer.")
         return mean, std
 
     def action_sample(self, mean, std):

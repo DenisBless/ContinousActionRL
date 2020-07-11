@@ -9,6 +9,7 @@ import argparse
 import pathlib
 import torch
 import time
+import gym
 
 parser = argparse.ArgumentParser(description='algorithm arguments')
 
@@ -21,8 +22,6 @@ parser.add_argument('--learning_steps', type=int, default=2000,
                     help='Total number of learning timesteps before sampling trajectories.')
 parser.add_argument('--num_training_iterations', type=int, default=1000,
                     help='Number of training iterations.')
-parser.add_argument('--out_layer', type=str, default='linear',
-                    help='Output layer of the actor network. Choose between <linear>, <tanh>.')
 parser.add_argument('--actor_lr', type=float, default=2e-4,
                     help='Learning rate for the actor network.')
 parser.add_argument('--critic_lr', type=float, default=2e-4,
@@ -56,7 +55,7 @@ parser.add_argument('--model_save_path', type=str,
                     help='Directory to the saved models.')
 
 # Environment parameter
-parser.add_argument('--episode_length', type=int, default=100,
+parser.add_argument('--episode_length', type=int, default=1000,
                     help='Length of a episode.')
 parser.add_argument('--num_eval_trajectories', type=int, default=1,
                     help='Number of trajectories used for evaluating the policy.')
@@ -74,20 +73,11 @@ parser.add_argument('--action_smoothing', type=bool, default=True,
 if __name__ == '__main__':
     args = parser.parse_args()
 
-    env = ReachEnv(max_steps=1000,
-                   control='mocap',
-                   coordinates='relative',
-                   action_smoothing=False,
-                   step_limitation='percentage',
-                   percentage=0.1,
-                   dt=args.dt,
-                   control_timesteps=1,
-                   randomize_objects=False,
-                   render=True)
+    env = gym.make("Hopper-v2")
 
     # PARAMETER
-    NUM_OBSERVATIONS = env.observation_dim
-    NUM_ACTIONS = env.agent.action_dimension
+    NUM_OBSERVATIONS = env.observation_space.shape[0]
+    NUM_ACTIONS = env.action_space.shape[0]
 
     replay_buffer = ReplayBuffer(args.replay_buffer_size)
 

@@ -1,9 +1,9 @@
 from continous_action_RL.actor_critic_networks import Actor, Critic
-from continous_action_RL.off_policy.replay_buffer import ReplayBuffer
+from continous_action_RL.replay_buffer import ReplayBuffer
 from continous_action_RL.sampler import Sampler
 from continous_action_RL.evaluator import Evaluator
 from continous_action_RL.logger import Logger
-from continous_action_RL.off_policy.off_policy_learner import OffPolicyLearner
+from continous_action_RL.learner import Learner
 from ALR_SF.SimulationFramework.simulation.src.gym_sf.mujoco.mujoco_envs.reach_env.reach_env import ReachEnv
 import argparse
 import pathlib
@@ -14,13 +14,15 @@ parser = argparse.ArgumentParser(description='algorithm arguments')
 
 # Algorithm parameter
 parser.add_argument('--batch_size', type=int, default=32,
-                    help='Size of the batches used for training the actor and the critic. [default:32]')
-parser.add_argument('--update_targnets_every', type=int, default=100,
+                    help='Size of the batches used for training the actor and the critic.')
+parser.add_argument('--update_targnets_every', type=int, default=50,
                     help='Number of learning steps before the target networks are updated.')
-parser.add_argument('--learning_steps', type=int, default=2000,
+parser.add_argument('--learning_steps', type=int, default=1000,
                     help='Total number of learning timesteps before sampling trajectories.')
-parser.add_argument('--num_training_iterations', type=int, default=1000,
+parser.add_argument('--num_training_iterations', type=int, default=5000,
                     help='Number of training iterations.')
+parser.add_argument('--out_layer', type=str, default='linear',
+                    help='Output layer of the actor network. Choose between <linear>, <tanh>.')
 parser.add_argument('--actor_lr', type=float, default=2e-4,
                     help='Learning rate for the actor network.')
 parser.add_argument('--critic_lr', type=float, default=2e-4,
@@ -43,7 +45,7 @@ parser.add_argument('--action_std_high', type=float, default=1.,
                     help='Upper bound on the standard deviation of the actions.')
 parser.add_argument('--action_bound', type=float, default=1.,
                     help='Clips the action in the range [-action_bound, action_bound].')
-parser.add_argument('--replay_buffer_size', type=float, default=1.,
+parser.add_argument('--replay_buffer_size', type=int, default=5000,
                     help='Size of the replay buffer.')
 parser.add_argument('--log_interval', type=int, default=10,
                     help='Interval of the logger to collect and print data to tensorboard')
@@ -57,9 +59,9 @@ parser.add_argument('--model_save_path', type=str,
 parser.add_argument('--episode_length', type=int, default=100,
                     help='Length of a episode.')
 parser.add_argument('--num_eval_trajectories', type=int, default=1,
-                    help='Number of trajectories used for evaluating the policy. [default: 1]')
-parser.add_argument('--num_trajectories', type=int, default=100,
-                    help='Number of trajectories sampled before entering the learning phase. [default: 100]')
+                    help='Number of trajectories used for evaluating the policy.')
+parser.add_argument('--num_trajectories', type=int, default=50,
+                    help='Number of trajectories sampled before entering the learning phase.')
 parser.add_argument('--dt', type=float, default=1e-3,
                     help='Time between steps in the mujoco pyhsics simulation (in seconds).')
 parser.add_argument('--percentage', type=float, default=2e-2,
@@ -112,19 +114,19 @@ if __name__ == '__main__':
                       render=False,
                       logger=logger)
 
-    learner = OffPolicyLearner(actor=actor,
-                               critic=critic,
-                               trajectory_length=args.episode_length,
-                               actor_lr=args.actor_lr,
-                               critic_lr=args.critic_lr,
-                               expectation_samples=args.num_expectation_samples,
-                               entropy_regularization=args.entropy_reg,
-                               trust_region_coeff=args.trust_region_coeff,
-                               gradient_clip_val=args.global_gradient_norm,
-                               update_targnets_every=args.update_targnets_every,
-                               num_training_iter=args.learning_steps,
-                               minibatch_size=args.batch_size,
-                               logger=logger)
+    learner = Learner(actor=actor,
+                      critic=critic,
+                      trajectory_length=args.episode_length,
+                      actor_lr=args.actor_lr,
+                      critic_lr=args.critic_lr,
+                      expectation_samples=args.num_expectation_samples,
+                      entropy_regularization=args.entropy_reg,
+                      trust_region_coeff=args.trust_region_coeff,
+                      gradient_clip_val=args.global_gradient_norm,
+                      update_targnets_every=args.update_targnets_every,
+                      num_training_iter=args.learning_steps,
+                      minibatch_size=args.batch_size,
+                      logger=logger)
 
     evaluator = Evaluator(env=env,
                           actor=actor,
