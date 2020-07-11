@@ -86,12 +86,10 @@ if __name__ == '__main__':
     actor = actor.cuda() if use_gpu else actor
     critic = critic.cuda() if use_gpu else critic
 
-    sampler = Sampler(env=env,
+    sampler = Sampler(actor, env, None, replay_buffer,
                       num_trajectories=NUM_TRAJECTORIES,
-                      actor_network=actor,
-                      replay_buffer=replay_buffer,
-                      render=False,
-                      logger=logger,
+                      continuous=True,
+                      writer=logger,
                       use_gpu=use_gpu)
 
     learner = OffPolicyLearner(actor=actor,
@@ -122,7 +120,7 @@ if __name__ == '__main__':
     for t in range(TOTAL_TIMESTEPS):
         tm = time.time()
         print("-" * 10, t, "-" * 10)
-        sampler.collect_trajectories()
+        sampler.sample()
         print("Sampling Nr. ", t + 1, " finished in ", time.time() - tm, " seconds.")
         tm = time.time()
         learner.learn(replay_buffer)

@@ -35,14 +35,9 @@ if __name__ == '__main__':
     ACTION_BOUNDS = (-2, 2)
     TOTAL_TIMESTEPS = 10
 
-    actor = Actor(num_actions=NUM_ACTIONS,
-                  num_obs=NUM_OBSERVATIONS,
-                  mean_scale=ACTION_MEAN_SCALE,
-                  std_low=ACTION_STD_LOW,
-                  std_high=ACTION_STD_HIGH,
-                  action_bound=ACTION_BOUNDS)
+    actor = ContinuousActor()
 
-    critic = Critic(num_actions=NUM_ACTIONS, num_obs=NUM_OBSERVATIONS)
+    critic = ContinuousCritic()
 
     device = "cuda:0" if torch.cuda.is_available() else "cpu"
 
