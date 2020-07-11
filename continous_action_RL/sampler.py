@@ -76,7 +76,7 @@ class Sampler:
                 observations.append(obs.detach())
                 actions.append(action.detach())
                 log_probs.append(log_prob.detach())
-                rewards.append(torch.tensor(reward))
+                rewards.append(torch.tensor(reward).unsqueeze(-1))
                 num_steps += 1
                 self.step_counter += 1
                 obs = obs_new

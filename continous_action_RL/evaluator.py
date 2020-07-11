@@ -39,7 +39,7 @@ class Evaluator:
                 done = False
                 while not done:
                     obs = obs.cuda() if self.use_gpu else obs
-                    action, action_log_prob = self.actor.predict(obs, task=0)
+                    action, action_log_prob = self.actor.predict(obs, task=0, noise=False)
                     next_obs, reward, done, _ = self.env.step(action.detach().cpu().numpy())
                     rewards.append(reward)
                     obs = torch.tensor(next_obs, dtype=torch.float)
