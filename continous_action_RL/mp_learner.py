@@ -7,8 +7,7 @@ from continous_action_RL.utils import Utils
 
 class Learner:
     def __init__(self,
-                 actor,
-                 critic,
+                 parameter_manager,
                  trajectory_length,
                  discount_factor=0.99,
                  actor_lr=2e-4,
@@ -24,19 +23,21 @@ class Learner:
 
         self.device = "cuda:0" if torch.cuda.is_available() else "cpu"
 
-        self.actor = actor
-        self.critic = critic
+        self.parameter_manager = parameter_manager
+
+        self.actor = parameter_manager.actor
+        self.critic = parameter_manager.critic
 
         self.logger = logger
         self.log_step = 0
         self.trajectory_length = trajectory_length
         self.discount_factor = discount_factor
-        self.target_actor = copy.deepcopy(actor).to(self.device)
-        self.target_critic = copy.deepcopy(critic).to(self.device)
+        self.target_actor = copy.deepcopy(self.actor).to(self.device)
+        self.target_critic = copy.deepcopy(self.critic).to(self.device)
         Utils.freeze_net(self.target_actor)
         Utils.freeze_net(self.target_critic)
-        self.actor_opt = torch.optim.Adam(params=actor.parameters(), lr=actor_lr)
-        self.critic_opt = torch.optim.Adam(params=critic.parameters(), lr=critic_lr)
+        self.actor_opt = torch.optim.Adam(params=self.actor.parameters(), lr=actor_lr)
+        self.critic_opt = torch.optim.Adam(params=self.critic.parameters(), lr=critic_lr)
 
         self.num_training_iter = num_training_iter
         self.update_targnets_every = update_targnets_every
@@ -44,8 +45,8 @@ class Learner:
         self.minibatch_size = minibatch_size
         self.gradient_clip_val = gradient_clip_val
 
-        self.num_actions = actor.num_actions
-        self.num_obs = actor.num_obs
+        self.num_actions = self.actor.num_actions
+        self.num_obs = self.actor.num_obs
 
         self.trust_region_coeff = trust_region_coeff
 

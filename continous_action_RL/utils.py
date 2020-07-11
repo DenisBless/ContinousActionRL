@@ -15,7 +15,8 @@ class Utils:
         for i in range(len(trajectories)):
             state_batch[i, :] = trajectories[i].state
             action_batch[i, :] = trajectories[i].action
-            reward_batch[i, :] = trajectories[i].reward#.unsqueeze(1)
+            if trajectories[i].reward.dim() == 1:
+                reward_batch[i, :] = trajectories[i].reward.unsqueeze(-1)
             action_prob_batch[i, :] = trajectories[i].action_prob
         return state_batch.to(device), action_batch.to(device), reward_batch.to(device), action_prob_batch.to(device)
 
