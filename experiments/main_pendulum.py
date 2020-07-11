@@ -1,13 +1,17 @@
+import os.path as osp
+import sys
+import gym
+import pathlib
+import torch
+import time
+sys.path.insert(0, osp.abspath(osp.join(osp.dirname(__file__), '..')))
+
 from continous_action_RL.actor_critic_networks import Actor, Critic
 from continous_action_RL.off_policy.replay_buffer import ReplayBuffer
 from continous_action_RL.sampler import Sampler
 from continous_action_RL.evaluator import Evaluator
 from continous_action_RL.logger import Logger
 from continous_action_RL.off_policy.off_policy_learner import OffPolicyLearner
-import gym
-import pathlib
-import torch
-import time
 
 if __name__ == '__main__':
 
@@ -45,7 +49,7 @@ if __name__ == '__main__':
     REPLAY_BUFFER_SIZE = 10000
     LOG_EVERY = 10
     SAVE_MODEL_EVERY = 10
-    MODEL_SAVE_PATH = str(pathlib.Path(__file__).resolve().parents[1]) + "/models/"
+    MODEL_SAVE_PATH = "./models/"
 
     replay_buffer = ReplayBuffer(REPLAY_BUFFER_SIZE)
 
