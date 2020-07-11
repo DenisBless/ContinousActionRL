@@ -1,4 +1,5 @@
 import numpy as np
+from abc import ABC, abstractmethod
 import torch
 import torch.nn.functional as F
 from torch.distributions import Normal
@@ -40,6 +41,14 @@ class Critic(torch.nn.Module):
         x = F.layer_norm(x, normalized_shape=list(x.shape)) if self.layer_norm else x
         x = self.output(x)
         return x
+
+    def copy_params(self, source_network):
+        for param, source_param in zip(self.parameters(), source_network.parameters()):
+            param.data.copy_(source_param.data)
+
+    def copy_gradients(self, source_network):
+        for param, source_param in zip(self.parameters(), source_network.parameters()):
+            param._grad = source_param.grad
 
 
 class Actor(torch.nn.Module):
@@ -151,9 +160,53 @@ class Actor(torch.nn.Module):
         t2 = - torch.log(torch.sqrt(torch.tensor(2 * np.pi, dtype=torch.float)) * std)
         return t1 + t2
 
+    def copy_params(self, source_network):
+        for param, source_param in zip(self.parameters(), source_network.parameters()):
+            param.data.copy_(source_param.data)
+
+    def copy_gradients(self, source_network):
+        for param, source_param in zip(self.parameters(), source_network.parameters()):
+            param._grad = source_param.grad
+
     # def sample(self, mean, std):
     #     dist = torch.distributions.Normal(loc=mean, scale=std)
     #     return dist.rsample()
     #
     # def log_probs(self, dist):
     #     return dist.log_prob()
+
+
+class ParameterManager:
+    def __init__(self, num_actions,
+                 num_observations,
+                 mean_scale,
+                 action_std_low,
+                 action_std_high,
+                 action_bound):
+
+        self.actor = Actor(num_actions=num_actions,
+                           num_obs=num_observations,
+                           mean_scale=mean_scale,
+                           std_low=action_std_low,
+                           std_high=action_std_high,
+                           action_bound=(-action_bound, action_bound))
+
+        self.actor.share_memory()
+
+        self.avg_actor = Actor(num_actions=num_actions,
+                               num_obs=num_observations,
+                               mean_scale=mean_scale,
+                               std_low=action_std_low,
+                               std_high=action_std_high,
+                               action_bound=(-action_bound, action_bound))
+
+        self.avg_actor.share_memory()
+        self.avg_actor.copy_params(source_network=self.actor)
+
+        self.critic = Critic(num_actions=num_actions, num_obs=num_observations)
+
+        self.critic.share_memory()
+
+        self.avg_critic = Critic(num_actions=num_actions, num_obs=num_observations)
+        self.avg_critic.share_memory()
+        self.avg_critic.copy_params(source_network=self.critic)

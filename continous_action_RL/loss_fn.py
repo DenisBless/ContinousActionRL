@@ -95,6 +95,9 @@ class Retrace(torch.nn.Module):
             "Error, shape mismatch. Shapes: target_policy_logprob: " \
             + str(target_policy_logprob.shape) + " mean: " + str(behaviour_policy_logprob.shape)
 
+        num_actions = target_policy_logprob.shape[-1]
+        assert num_actions == 3 #todo tmp
+
         if target_policy_logprob.dim() > 2:
             retrace_weights = (
                     torch.sum(target_policy_logprob, dim=-1) - torch.sum(behaviour_policy_logprob, dim=-1)).clamp(max=0)
@@ -102,7 +105,7 @@ class Retrace(torch.nn.Module):
             retrace_weights = (target_policy_logprob - behaviour_policy_logprob).clamp(max=0)
 
         assert not torch.isnan(retrace_weights).any(), "Error, a least one NaN value found in retrace weights."
-        return torch.exp(retrace_weights)
+        return torch.pow(torch.exp(retrace_weights), 1 / num_actions)
 
 
 class ActorLoss(torch.nn.Module):

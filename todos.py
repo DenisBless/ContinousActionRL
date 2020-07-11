@@ -15,7 +15,7 @@
 # • Todo: Try to out entropy regularization
 # • Todo: Try out increasing dt such that sampling an episode requires less time
 # • Todo: Try out truncating the gaussian distribution directly at the output of the neural network
-# • Todo:
+# • Todo: Make standart deviation state independent
 # • Todo:
 # • Todo:
 
