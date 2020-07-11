@@ -1,5 +1,8 @@
 import torch
+from collections import namedtuple
 
+Transition = namedtuple('Transition',
+                        ('state', 'action', 'reward', 'action_prob'))
 
 class Sampler:
     def __init__(self,
@@ -30,8 +33,7 @@ class Sampler:
             done = False
             while not done:
                 obs = obs.cuda() if self.use_gpu else obs
-                mean, std = self.actor_network.forward(observation=obs)
-                action, action_log_prob = self.actor_network.action_sample(mean, std)
+                action, action_log_prob = self.actor_network.predict(obs, task=0)
                 next_obs, reward, done, _ = self.env.step(action.detach().cpu().numpy())
                 next_obs = torch.tensor(next_obs, dtype=torch.float)
                 next_obs = next_obs.cuda() if self.use_gpu else next_obs
@@ -55,4 +57,4 @@ class Sampler:
             if self.logger is not None and i % self.logger.log_every == 0:
                 self.logger.add_scalar(scalar_value=rewards.mean(), tag="Reward/train")
 
-            self.replay_buffer.push(states, actions.detach(), rewards, action_log_probs.detach())
+            self.replay_buffer.append(Transition(states, actions.detach(), action_log_probs.detach(), rewards))

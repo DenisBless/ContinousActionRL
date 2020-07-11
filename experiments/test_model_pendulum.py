@@ -1,4 +1,5 @@
 from continous_action_RL.actor_critic_networks import Actor, Critic
+from continous_action_RL.networks_continuous import ContinuousCritic, ContinuousActor
 from continous_action_RL.off_policy.replay_buffer import ReplayBuffer
 from continous_action_RL.sampler import Sampler
 from continous_action_RL.evaluator import Evaluator
@@ -25,7 +26,7 @@ if __name__ == '__main__':
     NUM_ACTIONS = env.action_space.shape[0]
     TRAJECTORY_LENGTH = 200
 
-    MODEL_NAME = "actor_100"
+    MODEL_NAME = "actor_70"
     MODEL_LOAD_PATH = "./models/"
     NUM_EVAL_TRAJECTORIES = 10
     ACTION_STD_LOW = 1e-1

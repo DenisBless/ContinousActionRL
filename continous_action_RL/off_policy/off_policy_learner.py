@@ -1,4 +1,5 @@
 import copy
+import random
 
 import torch
 from continous_action_RL.off_policy.actor_loss import ActorLoss
@@ -46,12 +47,35 @@ class OffPolicyLearner:
         self.minibatch_size = minibatch_size
         self.gradient_clip_val = gradient_clip_val
 
-        self.num_actions = actor.num_actions
-        self.num_obs = actor.num_obs
+        self.num_actions = 1
+        self.num_obs = 3
 
         self.actor_loss = ActorLoss(entropy_regularization_on=entropy_regularization_on,
                                     alpha=entropy_regularization)
         self.critic_loss = Retrace()
+
+    @staticmethod
+    def get_critic_input(actions, states) -> torch.Tensor:
+        if actions.dim() == 4 and states.dim() == 3:
+            states = states.unsqueeze(-2).expand(*([-1] * (actions.dim() - 2) + [1, -1]))
+
+        assert actions.dim() == states.dim()
+        critic_input = torch.cat([actions, states], dim=-1)
+        return critic_input
+
+    def get_batch(self, replay_buffer, size=1):
+        """
+        returns -- (states, actions, log_probs, rewards)
+        """
+        trajectories = random.choices(replay_buffer, k=size)
+        tensors = [
+            torch.stack([
+                trajectory[tensor]
+                for trajectory in trajectories
+            ])
+            for tensor in range(4)
+        ]
+        return tuple([t.cuda() if self.use_gpu else t for t in tensors])
 
     def learn(self, replay_buffer):
         """Update the actor and critic networks using trajectories from the replay buffer.
@@ -68,37 +92,27 @@ class OffPolicyLearner:
                 self.actor.train()
                 self.critic.train()
 
-                trajectories = replay_buffer.sample(self.minibatch_size)
-                state_batch, action_batch, reward_batch, action_prob_batch \
-                    = Utils.create_batches(trajectories=trajectories,
-                                           trajectory_length=self.trajectory_length,
-                                           minibatch_size=self.minibatch_size,
-                                           num_obs=self.num_obs,
-                                           num_actions=self.num_actions)
+                state_batch, action_batch, action_prob_batch, reward_batch \
+                    = self.get_batch(replay_buffer, self.minibatch_size)
 
                 # Q(a_t, s_t)
-                Q = self.critic.forward(action_batch, state_batch)
+                Q = self.critic.forward(self.get_critic_input(action_batch, state_batch))
 
                 # Q_target(a_t, s_t)
-                target_Q = self.target_critic.forward(action_batch, state_batch)
+                target_Q = self.target_critic.forward(self.get_critic_input(action_batch, state_batch))
 
                 # Compute 𝔼_π_target [Q(s_t,•)] with a ~ π_target(•|s_t), log(π_target(a|s))
-                expected_target_Q = torch.zeros_like(reward_batch)
-                mean, std = self.target_actor.forward(state_batch)
-                for _ in range(self.expectation_samples):
-                    action_sample, _ = self.target_actor.action_sample(mean, std)
-                    expected_target_Q += self.target_critic.forward(action_sample, state_batch)
-                expected_target_Q /= self.expectation_samples
+                action_sample, _ = self.target_actor.predict(state_batch)
+                expected_target_Q = self.target_critic.forward(self.get_critic_input(action_sample, state_batch))
 
                 # log(π_target(a_t | s_t))
-                target_action_log_prob = self.target_actor.get_log_prob(action_batch, mean, std)
+                _, target_action_log_prob = self.target_actor.predict(state_batch, action=action_batch.unsqueeze(-2))
 
                 # a ~ π(•|s_t), log(π(a|s))
-                m, s = self.actor.forward(state_batch)
-                actions, action_log_prob = self.actor.action_sample(m, s)
+                actions, action_log_prob = self.actor.predict(state_batch, requires_grad=True)
 
                 # Q(a, s_t)
-                current_Q = self.critic.forward(actions, state_batch)
+                current_Q = self.critic.forward(self.get_critic_input(actions, state_batch))
 
                 # Critic update
                 self.actor.eval()

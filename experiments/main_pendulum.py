@@ -8,7 +8,9 @@ import time
 sys.path.insert(0, osp.abspath(osp.join(osp.dirname(__file__), '..')))
 
 from continous_action_RL.actor_critic_networks import Actor, Critic
+from continous_action_RL.networks_continuous import ContinuousCritic, ContinuousActor
 from continous_action_RL.off_policy.replay_buffer import ReplayBuffer
+from collections import deque
 from continous_action_RL.sampler import Sampler
 from continous_action_RL.evaluator import Evaluator
 from continous_action_RL.logger import Logger
@@ -72,19 +74,14 @@ if __name__ == '__main__':
 
     use_gpu = check_gpu(GPU_DEVICE)
 
-    replay_buffer = ReplayBuffer(REPLAY_BUFFER_SIZE)
+    replay_buffer = deque(maxlen=REPLAY_BUFFER_SIZE)
 
     # logger = Logger(log_every=LOG_EVERY)
     logger = None
 
-    actor = Actor(num_actions=NUM_ACTIONS,
-                  num_obs=NUM_OBSERVATIONS,
-                  mean_scale=ACTION_MEAN_SCALE,
-                  std_low=ACTION_STD_LOW,
-                  std_high=ACTION_STD_HIGH,
-                  action_bound=ACTION_BOUNDS)
+    actor = ContinuousActor(use_gpu=use_gpu)
 
-    critic = Critic(num_actions=NUM_ACTIONS, num_obs=NUM_OBSERVATIONS)
+    critic = ContinuousCritic(use_gpu=use_gpu)
 
     actor = actor.cuda() if use_gpu else actor
     critic = critic.cuda() if use_gpu else critic
