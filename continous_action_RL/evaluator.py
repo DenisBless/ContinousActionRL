@@ -11,9 +11,9 @@ class Evaluator:
                  num_trajectories=10,
                  save_model_every=10,
                  logger=None,
-                 render=False):
+                 render=False,
+                 use_gpu=False):
 
-        self.device = "cuda:0" if torch.cuda.is_available() else "cpu"
 
         self.env = env
         self.actor = actor
@@ -23,6 +23,7 @@ class Evaluator:
         self.save_model_every = save_model_every
         self.logger = logger
         self.render = render
+        self.use_gpu = use_gpu
 
         self.num_evals = 0
 

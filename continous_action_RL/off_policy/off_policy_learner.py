@@ -21,9 +21,11 @@ class OffPolicyLearner:
                  update_targnets_every=20,
                  expectation_samples=10,
                  minibatch_size=8,
-                 logger=None):
+                 logger=None,
+                 use_gpu=False
+                 ):
 
-        self.device = "cuda:0" if torch.cuda.is_available() else "cpu"
+        self.use_gpu = use_gpu
 
         self.actor = actor
         self.critic = critic
@@ -31,8 +33,8 @@ class OffPolicyLearner:
         self.logger = logger
         self.trajectory_length = trajectory_length
         self.discount_factor = discount_factor
-        self.target_actor = copy.deepcopy(actor).to(self.device)
-        self.target_critic = copy.deepcopy(critic).to(self.device)
+        self.target_actor = copy.deepcopy(actor)
+        self.target_critic = copy.deepcopy(critic)
         Utils.freeze_net(self.target_actor)
         Utils.freeze_net(self.target_critic)
         self.actor_opt = torch.optim.Adam(params=actor.parameters(), lr=actor_lr)
@@ -83,8 +85,6 @@ class OffPolicyLearner:
                 # Compute 𝔼_π_target [Q(s_t,•)] with a ~ π_target(•|s_t), log(π_target(a|s))
                 expected_target_Q = torch.zeros_like(reward_batch)
                 mean, std = self.target_actor.forward(state_batch)
-                mean = mean.to(self.device)
-                std = std.to(self.device)
                 for _ in range(self.expectation_samples):
                     action_sample, _ = self.target_actor.action_sample(mean, std)
                     expected_target_Q += self.target_critic.forward(action_sample, state_batch)
@@ -96,7 +96,6 @@ class OffPolicyLearner:
                 # a ~ π(•|s_t), log(π(a|s))
                 m, s = self.actor.forward(state_batch)
                 actions, action_log_prob = self.actor.action_sample(m, s)
-                actions.to(self.device)
 
                 # Q(a, s_t)
                 current_Q = self.critic.forward(actions, state_batch)

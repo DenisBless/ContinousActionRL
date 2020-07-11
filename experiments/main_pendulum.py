@@ -1,3 +1,4 @@
+import os
 import os.path as osp
 import sys
 import gym
@@ -13,6 +14,22 @@ from continous_action_RL.evaluator import Evaluator
 from continous_action_RL.logger import Logger
 from continous_action_RL.off_policy.off_policy_learner import OffPolicyLearner
 
+
+def check_gpu(gpu_device):
+    if type(gpu_device) is not str:
+        gpu_device = str(gpu_device)
+    # Make sure we can use gpu
+    use_gpu = torch.cuda.is_available()
+
+    if use_gpu:
+        os.environ['CUDA_DEVICE_ORDER'] = 'PCI_BUS_ID'
+        os.environ['CUDA_VISIBLE_DEVICES'] = gpu_device
+    use_gpu = torch.cuda.is_available() and use_gpu
+    print('Use GPU: %s' % gpu_device if use_gpu else use_gpu)
+
+
+    return use_gpu
+
 if __name__ == '__main__':
 
     """
@@ -25,6 +42,8 @@ if __name__ == '__main__':
     env = gym.make("Pendulum-v0")
 
     # PARAMETER
+    GPU_DEVICE = 6
+
     NUM_OBSERVATIONS = env.observation_space.shape[0]
     NUM_ACTIONS = env.action_space.shape[0]
     TRAJECTORY_LENGTH = 200
@@ -51,9 +70,12 @@ if __name__ == '__main__':
     SAVE_MODEL_EVERY = 10
     MODEL_SAVE_PATH = "./models/"
 
+    use_gpu = check_gpu(GPU_DEVICE)
+
     replay_buffer = ReplayBuffer(REPLAY_BUFFER_SIZE)
 
-    logger = Logger(log_every=LOG_EVERY)
+    # logger = Logger(log_every=LOG_EVERY)
+    logger = None
 
     actor = Actor(num_actions=NUM_ACTIONS,
                   num_obs=NUM_OBSERVATIONS,
@@ -64,17 +86,16 @@ if __name__ == '__main__':
 
     critic = Critic(num_actions=NUM_ACTIONS, num_obs=NUM_OBSERVATIONS)
 
-    device = "cuda:0" if torch.cuda.is_available() else "cpu"
-
-    actor = actor.to(device)
-    critic = critic.to(device)
+    actor = actor.cuda() if use_gpu else actor
+    critic = critic.cuda() if use_gpu else critic
 
     sampler = Sampler(env=env,
                       num_trajectories=NUM_TRAJECTORIES,
                       actor_network=actor,
                       replay_buffer=replay_buffer,
                       render=False,
-                      logger=logger)
+                      logger=logger,
+                      use_gpu=use_gpu)
 
     learner = OffPolicyLearner(actor=actor,
                                critic=critic,
@@ -88,7 +109,8 @@ if __name__ == '__main__':
                                update_targnets_every=UPDATE_TARGNETS_EVERY,
                                num_training_iter=NUM_TRAINING_ITERATIONS,
                                minibatch_size=BATCH_SIZE,
-                               logger=logger)
+                               logger=logger,
+                               use_gpu=use_gpu)
 
     evaluator = Evaluator(env=env,
                           actor=actor,
@@ -97,7 +119,8 @@ if __name__ == '__main__':
                           num_trajectories=NUM_EVAL_TRAJECTORIES,
                           save_model_every=SAVE_MODEL_EVERY,
                           logger=logger,
-                          render=False)
+                          render=False,
+                          use_gpu=use_gpu)
 
     for t in range(TOTAL_TIMESTEPS):
         tm = time.time()

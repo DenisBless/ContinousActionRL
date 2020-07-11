@@ -8,32 +8,36 @@ class Sampler:
                  actor_network,
                  replay_buffer,
                  render=False,
-                 logger=None):
+                 logger=None,
+                 use_gpu=False
+                 ):
 
-        self.device = "cuda:0" if torch.cuda.is_available() else "cpu"
 
         self.env = env
         self.logger = logger
         self.num_trajectories = num_trajectories
-        self.actor_network = actor_network.to(self.device)
+        self.actor_network = actor_network
         self.render = render
         self.replay_buffer = replay_buffer
+
+        self.use_gpu = use_gpu
 
     def collect_trajectories(self):
         for i in range(self.num_trajectories):
             states, actions, rewards, action_log_probs = [], [], [], []
 
-            obs = torch.tensor(self.env.reset(), dtype=torch.float).to(self.device)
+            obs = torch.tensor(self.env.reset(), dtype=torch.float)
             done = False
             while not done:
+                obs = obs.cuda() if self.use_gpu else obs
                 mean, std = self.actor_network.forward(observation=obs)
-                mean = mean.to(self.device)
-                std = std.to(self.device)
                 action, action_log_prob = self.actor_network.action_sample(mean, std)
-                action = action.to(self.device)
                 next_obs, reward, done, _ = self.env.step(action.detach().cpu().numpy())
-                next_obs = torch.tensor(next_obs, dtype=torch.float).to(self.device)
-                reward = torch.tensor(reward, dtype=torch.float).to(self.device)
+                next_obs = torch.tensor(next_obs, dtype=torch.float)
+                next_obs = next_obs.cuda() if self.use_gpu else next_obs
+                reward = torch.tensor(reward, dtype=torch.float)
+                reward = reward.cuda() if self.use_gpu else reward
+
                 states.append(obs)
                 actions.append(action)
                 rewards.append(reward)
@@ -43,10 +47,10 @@ class Sampler:
                     self.env.render()
 
             # turn lists into tensors
-            states = torch.stack(states).to(self.device)
-            actions = torch.stack(actions).to(self.device)
-            rewards = torch.stack(rewards).to(self.device)
-            action_log_probs = torch.stack(action_log_probs).to(self.device)
+            states = torch.stack(states)
+            actions = torch.stack(actions)
+            rewards = torch.stack(rewards)
+            action_log_probs = torch.stack(action_log_probs)
 
             if self.logger is not None and i % self.logger.log_every == 0:
                 self.logger.add_scalar(scalar_value=rewards.mean(), tag="Reward/train")
