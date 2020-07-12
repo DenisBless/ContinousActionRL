@@ -10,9 +10,9 @@ parser = argparse.ArgumentParser(description='algorithm arguments')
 
 # Algorithm parameter
 # parser.add_argument('--num_worker', type=int, default=os.cpu_count(),
-parser.add_argument('--num_worker', type=int, default=6,
+parser.add_argument('--num_worker', type=int, default=2,
                     help='Number of workers training the agent in parallel.')
-parser.add_argument('--num_grads', type=int, default=200,
+parser.add_argument('--num_grads', type=int, default=10,
                     help='Number of gradients collected before updating the networks.')
 parser.add_argument('--batch_size', type=int, default=32,
                     help='Size of the batches used for training the actor and the critic.')

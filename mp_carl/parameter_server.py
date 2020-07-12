@@ -28,6 +28,14 @@ class ParameterServer:
                 self.N -= self.N
 
     def add_gradients(self, source_actor, source_critic):
+        # print("optim", self.actor_optimizer.param_groups[0]['params'][-1].grad)
+        # a = list(self.shared_actor.parameters())[-1].grad
+        # b = list(source_actor.parameters())[-1].grad/self.G
+        # print(a)
+        # print(b)
+        # print(a+b)
+        # print("-"*30)
+
         for a_param, a_source_param in zip(self.shared_actor.parameters(), source_actor.parameters()):
             a_param.grad += a_source_param.grad / self.G
             # a_param.grad_ += a_source_param.grad / self.G # todo grad_ ???
@@ -36,7 +44,12 @@ class ParameterServer:
             c_param.grad += c_source_param.grad / self.G
 
     def update_gradients(self):
+        # print("update step")
+        # print("optim", self.actor_optimizer.param_groups[0]['params'][-1].grad)
+        # print(list(self.shared_actor.parameters())[-1])
         self.actor_optimizer.step()
+        # print(list(self.shared_actor.parameters())[-1])
+        # print("-"*30)
         self.critic_optimizer.step()
         self.actor_optimizer.zero_grad()
         self.critic_optimizer.zero_grad()
@@ -44,6 +57,8 @@ class ParameterServer:
     def init_grad(self):
         for a_param in self.shared_actor.parameters():
             a_param.grad = torch.zeros_like(a_param.data)
+            a_param.grad.share_memory_()
 
         for c_param in self.shared_critic.parameters():
             c_param.grad = torch.zeros_like(c_param.data)
+            c_param.grad.share_memory_()
