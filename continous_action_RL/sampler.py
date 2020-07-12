@@ -5,7 +5,6 @@ class Sampler:
     def __init__(self,
                  env,
                  num_trajectories,
-                 actor_network,
                  replay_buffer,
                  render=False,
                  logger=None):
@@ -15,11 +14,10 @@ class Sampler:
         self.env = env
         self.logger = logger
         self.num_trajectories = num_trajectories
-        self.actor_network = actor_network.to(self.device)
         self.render = render
         self.replay_buffer = replay_buffer
 
-    def collect_trajectories(self):
+    def collect_trajectories(self, actor):
         for i in range(self.num_trajectories):
             states, actions, rewards, action_log_probs = [], [], [], []
 
