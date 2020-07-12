@@ -1,18 +1,21 @@
+from mp_carl.actor_critic_networks import Actor, Critic
+from mp_carl.optimizer import SharedAdam
+
+
 class ParameterServer:
-    def __init__(self, G, actor, critic, lock):
+    def __init__(self, G, actor_lr, critic_lr, num_actions, num_obs, lock):
         self.G = G  # number of gradients before updating networks
         self.N = 0  # current number of gradients
         self.lock = lock  # enter monitor to prevent race condition
-        self.actor = ...
-        self.critic = ...
-        self.actor_grad_storage = ...
-        self.critic_grad_storage = ...
-        self.actor_optimizer = ...
-        self.critic_optimizer = ...
+        self.shared_actor = Actor(num_actions=num_actions, num_obs=num_obs)
+        self.shared_actor.share_memory()
+        self.shared_critic = Critic(num_actions=num_actions, num_obs=num_obs)
+        self.shared_critic.share_memory()
+        self.actor_optimizer = SharedAdam(self.shared_actor.parameters(), actor_lr)
+        self.critic_optimizer = SharedAdam(self.shared_critic.parameters(), critic_lr)
 
-    def receive_gradients(self, actor_grad, critic_grad):
-        self.actor_grad_storage.put(actor_grad)
-        self.critic_grad_storage.put(critic_grad)
+    def receive_gradients(self, actor, critic):
+        self.add_gradients(source_actor=actor, source_critic=critic)
         with self.lock:
             self.N += 1
             if self.N == self.G:
@@ -20,11 +23,12 @@ class ParameterServer:
                 self.N = 0
 
     def add_gradients(self, source_actor, source_critic):
-        for a_param, a_source_param in zip(self.actor.parameters(), source_actor.parameters()):
-            a_param.grad_ += a_source_param / self.G
+        for a_param, a_source_param in zip(self.shared_actor.parameters(), source_actor.parameters()):
+            a_param.grad += a_source_param.grad / self.G
+            # a_param.grad_ += a_source_param.grad / self.G # todo grad_ ???
 
-        for c_param, c_source_param in zip(self.critic.parameters(), source_critic.parameters()):
-            c_param.grad_ += c_source_param / self.G
+        for c_param, c_source_param in zip(self.shared_critic.parameters(), source_critic.parameters()):
+            c_param.grad += c_source_param.grad / self.G
 
     def update_gradients(self):
         self.actor_optimizer.step()
