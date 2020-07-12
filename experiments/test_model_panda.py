@@ -104,7 +104,8 @@ if __name__ == '__main__':
 
     device = "cuda:0" if torch.cuda.is_available() else "cpu"
 
-    actor.load_state_dict(torch.load(args.model_save_path + "actor_70"))
+    actor.load_state_dict(torch.load(args.model_save_path + "actor_1000"))
+    # actor.load_state_dict(torch.load(args.model_save_path + "actor_70"))
 
     actor = actor.to(device)
     critic = critic.to(device)
