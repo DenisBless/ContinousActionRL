@@ -123,8 +123,8 @@ class OffPolicyLearner:
                                                        target_Q=target_Q.squeeze(-1),
                                                        rewards=reward_batch.squeeze(-1),
                                                        target_policy_probs=(target_action_log_prob.squeeze(-1)),
-                                                       behaviour_policy_probs=(action_prob_batch.squeeze(-1)),
-                                                       recursive=True)
+                                                       behaviour_policy_probs=(action_prob_batch.squeeze(-1))
+                                                       )
 
                 critic_loss.backward(retain_graph=True)
 

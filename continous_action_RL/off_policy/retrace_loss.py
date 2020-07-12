@@ -3,8 +3,9 @@ import torch.nn.functional as F
 
 
 class Retrace(torch.nn.Module):
-    def __init__(self):
+    def __init__(self, gamma=0.99):
         super(Retrace, self).__init__()
+        self.gamma = gamma
 
     def forward(self,
                 Q,
@@ -12,9 +13,7 @@ class Retrace(torch.nn.Module):
                 target_Q,
                 rewards,
                 target_policy_probs,
-                behaviour_policy_probs,
-                gamma=0.99,
-                recursive=True):
+                behaviour_policy_probs):
         """
         Implementation of Retrace loss ((http://arxiv.org/abs/1606.02647)) in PyTorch.
 
@@ -69,33 +68,20 @@ class Retrace(torch.nn.Module):
         with torch.no_grad():
             # We don't want gradients from computing Q_ret, since:
             # ∇φ (Q - Q_ret)^2 ∝ (Q - Q_ret) * ∇φ Q
-            r_t = rewards[:, :-1]
-            target_Q_next_t = target_Q[:, 1:]
-            expected_Q_next_t = expected_target_Q[:, 1:]
             log_importance_weights = (target_policy_probs - behaviour_policy_probs)
-            importance_weights = (torch.exp(torch.clamp(log_importance_weights, max=0)))[:, 1:]
-            c_next_t = importance_weights
+            importance_weights = (torch.exp(torch.clamp(log_importance_weights, max=0)))
 
-            Q_ret = torch.zeros_like(Q_t, dtype=torch.float)  # (B,T)
-            Q_ret[:, -1] = target_Q_next_t[:, -1]
+            Q_ret = torch.zeros_like(Q, dtype=torch.float)  # (B,T)
+            Q_ret[:, -1] = target_Q[:, -1]
 
-            for j in reversed(range(1, T - 1)):
-                Q_ret[:, j - 1] = (
+            for j in reversed(range(0, T - 1)):
+                Q_ret[:, j] = (
                         rewards[:, j]
-                        + gamma * (
-                                expected_Q_next_t[:, j]
-                                + importance_weights[:, j] * (Q_ret[:, j] - target_Q_next_t[:, j])
+                        + self.gamma * (
+                                expected_target_Q[:, j + 1]
+                                + importance_weights[:, j + 1] * (Q_ret[:, j + 1] - target_Q[:, j + 1])
                         )
                 )
 
-        return F.mse_loss(Q_t, Q_ret)
-
-
-    @staticmethod
-    def remove_last_timestep(x):
-        return x.narrow(-2, 0, x.shape[-2] - 1)
-
-    @staticmethod
-    def remove_first_timestep(x):
-        return x.narrow(-2, 1, x.shape[-2] - 1)
+        return F.mse_loss(Q_t, Q_ret[:, :-1])
 
