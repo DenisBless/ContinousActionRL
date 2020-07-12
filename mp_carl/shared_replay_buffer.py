@@ -29,14 +29,17 @@ class SharedReplayBuffer(object):
     def push(self, states, actions, rewards, log_probs):
         """Saves a transition."""
         with self.lock:
+            self.position += 1
+            if self.position > self.capacity - 1:
+                self.full = True
+                # Reset to 0. Ugly but otherwise not working because position will not be in shared mem if new assigned.
+                self.position -= self.position
+
             self.state_memory[self.position] = states
             self.action_memory[self.position] = actions
             self.reward_memory[self.position] = rewards
             self.log_prob_memory[self.position] = log_probs
-            self.position += 1
-            if self.position == self.capacity - 1:
-                self.full = True
-                self.position = 0
+
             print(self.position)
 
     def sample(self):
@@ -63,6 +66,8 @@ class SharedReplayBuffer(object):
             return self.position
 
 
+
+# Not used but maybe better than working with tensors because it allows flexible trajectory length
 class SharedReplayBuffer2(object):
     def __init__(self, num_actions, trajectory_length, num_obs, capacity, lock):
         self.capacity = capacity

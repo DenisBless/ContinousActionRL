@@ -6,7 +6,8 @@ import torch
 class ParameterServer:
     def __init__(self, G, actor_lr, critic_lr, num_actions, num_obs, lock):
         self.G = G  # number of gradients before updating networks
-        self.N = 0  # current number of gradients
+        self.N = torch.tensor(0)  # current number of gradients
+        self.N.share_memory_()
         self.lock = lock  # enter monitor to prevent race condition
         self.shared_actor = Actor(num_actions=num_actions, num_obs=num_obs)
         self.shared_actor.share_memory()
@@ -21,10 +22,10 @@ class ParameterServer:
         with self.lock:
             self.add_gradients(source_actor=actor, source_critic=critic)
             self.N += 1
-            # print(self.N)
-            if self.N == self.G:
+            # print("Grad Nr:", self.N)
+            if self.N >= self.G:
                 self.update_gradients()  # todo: this should reset gradients -> check
-                self.N = 0
+                self.N -= self.N
 
     def add_gradients(self, source_actor, source_critic):
         for a_param, a_source_param in zip(self.shared_actor.parameters(), source_actor.parameters()):
