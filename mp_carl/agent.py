@@ -16,6 +16,7 @@ class Agent:
 
         self.device = "cuda:0" if torch.cuda.is_available() else "cpu"
 
+
         self.param_server = param_server
         self.shared_replay_buffer = shared_replay_buffer
         self.logger = logger
@@ -44,6 +45,10 @@ class Agent:
             self.evaluate()
 
     def sample(self):
+        self.actor = self.actor.to(self.device)
+        self.critc = self.critic.to(self.device)
+        self.target_actor = self.target_actor.to(self.device)
+        self.target_critic = self.target_critic.to(self.device)
         self.actor.copy_params(self.param_server.shared_actor)
 
         for i in range(self.num_trajectories):
@@ -75,7 +80,6 @@ class Agent:
             if self.logger is not None and i % self.logger.log_every == 0:
                 self.logger.add_scalar(scalar_value=rewards.mean(), tag="Reward/train")
 
-            # todo put? shat structure has the shared replay buffer
             self.shared_replay_buffer.push(states, actions.detach(), rewards, action_log_probs.detach())
 
     def learn(self):
@@ -92,6 +96,7 @@ class Agent:
             self.critic.train()
 
             states, actions, rewards, behaviour_log_pr = self.shared_replay_buffer.sample()
+            states, actions, behaviour_log_pr = states.to(self.device), actions.to(self.device), behaviour_log_pr.to(self.device)
 
             # Q(a_t, s_t)
             Q = self.critic.forward(actions, states)
@@ -148,6 +153,9 @@ class Agent:
             actor_loss.backward()
 
             self.param_server.receive_gradients(actor=self.actor, critic=self.critic)
+
+        self.actor.copy_params(self.param_server.shared_actor)
+        self.critic.copy_params(self.param_server.shared_critic)
 
     def evaluate(self):
         self.actor.copy_params(self.param_server.shared_actor)

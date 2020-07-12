@@ -1,24 +1,24 @@
 import argparse
 import os
 import pathlib
-import multiprocessing as mp
+import torch.multiprocessing as mp
 from mp_carl.agent import Agent
 from mp_carl.parameter_server import ParameterServer
-from mp_carl.shared_replay_buffer import SharedReplayBuffer, SharedReplayBuffer2
+from mp_carl.shared_replay_buffer import SharedReplayBuffer
 
 parser = argparse.ArgumentParser(description='algorithm arguments')
 
 # Algorithm parameter
 # parser.add_argument('--num_worker', type=int, default=os.cpu_count(),
-parser.add_argument('--num_worker', type=int, default=6,
+parser.add_argument('--num_worker', type=int, default=2,
                     help='Number of workers training the agent in parallel.')
-parser.add_argument('--num_grads', type=int, default=200,
+parser.add_argument('--num_grads', type=int, default=20,
                     help='Number of gradients collected before updating the networks.')
 parser.add_argument('--batch_size', type=int, default=32,
                     help='Size of the batches used for training the actor and the critic.')
 parser.add_argument('--update_targnets_every', type=int, default=20,
                     help='Number of learning steps before the target networks are updated.')
-parser.add_argument('--learning_steps', type=int, default=400,
+parser.add_argument('--learning_steps', type=int, default=100,
                     help='Total number of learning timesteps before sampling trajectories.')
 parser.add_argument('--num_runs', type=int, default=5000,
                     help='Number of learning iterations.')
@@ -31,7 +31,7 @@ parser.add_argument('--critic_lr', type=float, default=2e-4,
 parser.add_argument('--layer_norm', type=bool, default=False,
                     help='Includes a layer norm between FC layer in the actor and critic network.')
 parser.add_argument('--global_gradient_norm', type=float, default=0.5,
-                    help='Enables gradient clipping with a specified global parameter L2 norm')
+                    help='Enables gradient clipping with a specified global parameter L2 norm') # todo not included yet in mp
 parser.add_argument('--num_expectation_samples', type=int, default=1,
                     help='Number of action samples for approximating the value function from the Q function.')
 parser.add_argument('--entropy_reg', type=float, default=0,
@@ -40,11 +40,11 @@ parser.add_argument('--trust_region_coeff', type=float, default=0,
                     help='Scaling of the KL-div. between the old action distribution and the current in actor loss.')
 parser.add_argument('--action_mean_scale', type=float, default=2,
                     help='Scales the output of the actor net to [-action_mean_scale, action_mean_scale].')
-parser.add_argument('--action_std_low', type=float, default=1e-1,
+parser.add_argument('--action_std_low', type=float, default=3e-1,
                     help='Lower bound on the standard deviation of the actions.')
 parser.add_argument('--action_std_high', type=float, default=1.,
                     help='Upper bound on the standard deviation of the actions.')
-parser.add_argument('--action_bound', type=float, default=1.,
+parser.add_argument('--action_bound', type=float, default=2.,
                     help='Clips the action in the range [-action_bound, action_bound].')
 parser.add_argument('--replay_buffer_size', type=int, default=300,
                     help='Size of the replay buffer.')
@@ -84,6 +84,8 @@ def work(param_server, shared_replay_buffer, args):
 
 
 if __name__ == '__main__':
+    os.environ['CUDA_VISIBLE_DEVICES'] = ""  # Disable CUDA
+
     lock = mp.Lock()
     args = parser.parse_args()
     param_server = ParameterServer(G=args.num_grads,
@@ -91,7 +93,8 @@ if __name__ == '__main__':
                                    critic_lr=args.critic_lr,
                                    num_actions=NUM_ACTIONS,
                                    num_obs=NUM_OBSERVATIONS,
-                                   lock=lock)
+                                   lock=lock,
+                                   arg_parser=args)
     shared_replay_buffer = SharedReplayBuffer(capacity=args.replay_buffer_size,
                                               trajectory_length=args.episode_length,
                                               num_actions=NUM_ACTIONS,
@@ -99,7 +102,6 @@ if __name__ == '__main__':
                                               lock=lock)
 
     if args.num_worker == 1:
-    # if True:
         work(param_server=param_server, shared_replay_buffer=shared_replay_buffer, args=args)
     elif args.num_worker > 1:
         processes = [mp.Process(target=work, args=(param_server, shared_replay_buffer, args))

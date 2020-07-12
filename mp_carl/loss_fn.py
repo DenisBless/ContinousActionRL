@@ -6,6 +6,7 @@ class Retrace(torch.nn.Module):
     def __init__(self):
         super(Retrace, self).__init__()
         self.device = "cuda:0" if torch.cuda.is_available() else "cpu"
+        # self.device = "cpu"
 
     def forward(self,
                 Q,
