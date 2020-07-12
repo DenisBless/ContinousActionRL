@@ -118,12 +118,12 @@ class OffPolicyLearner:
                 self.critic.train()
                 self.critic_opt.zero_grad()
 
-                critic_loss = self.critic_loss.forward(Q=Q.squeeze(-1),
-                                                       expected_target_Q=expected_target_Q.squeeze(-1),
-                                                       target_Q=target_Q.squeeze(-1),
-                                                       rewards=reward_batch.squeeze(-1),
-                                                       target_policy_probs=(target_action_log_prob.squeeze(-1)),
-                                                       behaviour_policy_probs=(action_prob_batch.squeeze(-1))
+                critic_loss = self.critic_loss.forward(Q=Q,
+                                                       expected_target_Q=expected_target_Q,
+                                                       target_Q=target_Q,
+                                                       rewards=reward_batch,
+                                                       target_policy_probs=target_action_log_prob,
+                                                       behaviour_policy_probs=action_prob_batch
                                                        )
 
                 critic_loss.backward(retain_graph=True)

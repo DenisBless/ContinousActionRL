@@ -68,20 +68,20 @@ class Retrace(torch.nn.Module):
         with torch.no_grad():
             # We don't want gradients from computing Q_ret, since:
             # ∇φ (Q - Q_ret)^2 ∝ (Q - Q_ret) * ∇φ Q
-            log_importance_weights = (target_policy_probs - behaviour_policy_probs)
+            log_importance_weights = (target_policy_probs - behaviour_policy_probs.unsqueeze(-1))
             importance_weights = (torch.exp(torch.clamp(log_importance_weights, max=0)))
 
             Q_ret = torch.zeros_like(Q, dtype=torch.float)  # (B,T)
-            Q_ret[:, -1] = target_Q[:, -1]
+            Q_ret[:, -1, :] = target_Q[:, -1, :]
 
             for j in reversed(range(0, T - 1)):
-                Q_ret[:, j] = (
-                        rewards[:, j]
+                Q_ret[:, j, :] = (
+                        rewards[:, j, :]
                         + self.gamma * (
-                                expected_target_Q[:, j + 1]
-                                + importance_weights[:, j + 1] * (Q_ret[:, j + 1] - target_Q[:, j + 1])
+                                expected_target_Q[:, j + 1, :]
+                                + importance_weights[:, j + 1, :] * (Q_ret[:, j + 1, :] - target_Q[:, j + 1, :])
                         )
                 )
 
-        return F.mse_loss(Q_t, Q_ret[:, :-1])
+        return F.mse_loss(Q_t, Q_ret[:, :-1, :])
 
