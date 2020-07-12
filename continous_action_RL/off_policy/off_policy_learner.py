@@ -50,8 +50,7 @@ class OffPolicyLearner:
         self.num_actions = 1
         self.num_obs = 3
 
-        self.actor_loss = ActorLoss(entropy_regularization_on=entropy_regularization_on,
-                                    alpha=entropy_regularization)
+        self.actor_loss = ActorLoss()
         self.critic_loss = Retrace()
 
     @staticmethod
@@ -135,8 +134,7 @@ class OffPolicyLearner:
                 self.critic.eval()
                 self.actor_opt.zero_grad()
 
-                actor_loss = self.actor_loss.forward(Q=current_Q.squeeze(-1),
-                                                     action_log_prob=action_log_prob.squeeze(-1))
+                actor_loss = self.actor_loss.forward(current_Q.squeeze(-1), action_log_prob.squeeze(-1))
                 actor_loss.backward()
 
                 # Gradient update step with gradient clipping
