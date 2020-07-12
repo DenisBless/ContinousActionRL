@@ -1,9 +1,12 @@
 import argparse
-
+import os
+import pathlib
 
 parser = argparse.ArgumentParser(description='algorithm arguments')
 
 # Algorithm parameter
+parser.add_argument('--num_worker', type=int, default=os.cpu_count(),
+                    help='Number of workers training the agent in parallel.')
 parser.add_argument('--batch_size', type=int, default=32,
                     help='Size of the batches used for training the actor and the critic.')
 parser.add_argument('--update_targnets_every', type=int, default=50,
@@ -61,3 +64,30 @@ parser.add_argument('--control_timesteps', type=int, default=100,
                     help='Number of steps in the simulation between before the next action is executed.')
 parser.add_argument('--action_smoothing', type=bool, default=True,
                     help='Uses number <control_timsteps> to smooth between two action from the agent.')
+
+from mp_carl.agent import Agent
+from mp_carl.parameter_server import ParameterServer
+import multiprocessing as mp
+
+
+def work(param_server, shared_replay_buffer):
+    worker = Agent(param_server=param_server,
+                   shared_replay_buffer=shared_replay_buffer,
+                   arg_parser=parser)
+    worker.run()
+
+if __name__ == '__main__':
+    args = parser.parse_args()
+    param_server = ParameterServer()
+    shared_replay_buffer = ...
+    if args.num_worker == 1:
+        work(param_server=param_server, shared_replay_buffer=shared_replay_buffer)
+    elif args.num_worker > 1:
+        processes = [mp.Process(target=work, args=(param_server, shared_replay_buffer)) for _ in range(args.num_worker)]
+        for p in processes:
+            p.start()
+
+        for p in processes:
+            p.join()
+    else:
+        raise ValueError("Error, the number of workers has the be positive.")
