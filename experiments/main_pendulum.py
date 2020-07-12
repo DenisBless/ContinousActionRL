@@ -117,7 +117,7 @@ if __name__ == '__main__':
 
     for t in range(TOTAL_TIMESTEPS):
         tm = time.time()
-        print("-" * 10, t, "-" * 10)
+        print("-" * 10, t + 1, "-" * 10)
         sampler.sample()
         print("Sampling Nr. ", t + 1, " finished in ", time.time() - tm, " seconds.")
         tm = time.time()

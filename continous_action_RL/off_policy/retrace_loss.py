@@ -77,42 +77,19 @@ class Retrace(torch.nn.Module):
             c_next_t = importance_weights
 
             Q_ret = torch.zeros_like(Q_t, dtype=torch.float)  # (B,T)
-            Q_ret[:, -1] = Q[:, -1]
+            Q_ret[:, -1] = target_Q_next_t[:, -1]
 
-            for t in reversed(range(1, T - 1)):
-                Q_ret[:, t - 1] = r_t[:, t] + gamma * (expected_Q_next_t[:, t] - c_next_t[:, t] * target_Q_next_t[:, t]) \
-                                  + gamma * c_next_t[:, t] * Q_ret[:, t]
+            for j in reversed(range(1, T - 1)):
+                Q_ret[:, j - 1] = (
+                        rewards[:, j]
+                        + gamma * (
+                                expected_Q_next_t[:, j]
+                                + importance_weights[:, j] * (Q_ret[:, j] - target_Q_next_t[:, j])
+                        )
+                )
 
         return F.mse_loss(Q_t, Q_ret)
 
-
-
-    @staticmethod
-    def calc_retrace_weights(target_policy_probs, behaviour_policy_probs):
-        """
-        Calculates the retrace weights (truncated importance weights) c according to:
-        c_t = min(1, π_target(a_t|s_t) / b(a_t|s_t)) where:
-        π_target: target policy probabilities
-        b: behaviour policy probabilities
-
-        Args:
-            target_policy_probs: π_target(a_t|s_t)
-            behaviour_policy_probs: b(a_t|s_t)
-
-        Returns:
-            retrace weights c
-        """
-        assert target_policy_probs.shape == behaviour_policy_probs.shape, \
-            "Error, shape mismatch. Shapes: target_policy_probs: " \
-            + str(target_policy_probs.shape) + " mean: " + str(behaviour_policy_probs.shape)
-
-        if target_policy_probs.dim() > 2:
-            retrace_weights = (torch.prod(target_policy_probs, dim=-1) / torch.prod(behaviour_policy_probs, dim=-1)).clamp(min=1e-10, max=1)
-        else:
-            retrace_weights = (target_policy_probs / behaviour_policy_probs).clamp(min=1e-10, max=1)
-
-        assert not torch.isnan(retrace_weights).any(), "Error, a least one NaN value found in retrace weights."
-        return retrace_weights
 
     @staticmethod
     def remove_last_timestep(x):
