@@ -1,7 +1,3 @@
-import torch
-from continous_action_RL.optimizer import SharedAdam
-
-
 class ParameterServer:
     def __init__(self, G, actor, critic, lock):
         self.G = G  # number of gradients before updating networks
