@@ -49,9 +49,7 @@ if __name__ == '__main__':
     NUM_OBSERVATIONS = env.observation_space.shape[0]
     NUM_ACTIONS = env.action_space.shape[0]
     TRAJECTORY_LENGTH = 200
-    NUM_EVAL_TRAJECTORIES = 10
-    NUM_TRAJECTORIES = 500
-    BATCH_SIZE = 128
+    NUM_EVAL_TRAJECTORIES = 5
     NUM_TRAJECTORIES = 20
     BATCH_SIZE = 20
     UPDATE_TARGNETS_EVERY = 10
@@ -67,7 +65,7 @@ if __name__ == '__main__':
     ACTION_STD_HIGH = 1
     ACTION_MEAN_SCALE = 2
     ACTION_BOUNDS = (-2, 2)
-    REPLAY_BUFFER_SIZE = 10000
+    REPLAY_BUFFER_SIZE = 200
     LOG_EVERY = 10
     SAVE_MODEL_EVERY = 5
     MODEL_SAVE_PATH = "./models/"
