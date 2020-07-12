@@ -122,9 +122,8 @@ class OffPolicyLearner:
                                                        expected_target_Q=expected_target_Q.squeeze(-1),
                                                        target_Q=target_Q.squeeze(-1),
                                                        rewards=reward_batch.squeeze(-1),
-                                                       target_policy_probs=torch.exp(
-                                                           target_action_log_prob.squeeze(-1)),
-                                                       behaviour_policy_probs=torch.exp(action_prob_batch.squeeze(-1)),
+                                                       target_policy_probs=(target_action_log_prob.squeeze(-1)),
+                                                       behaviour_policy_probs=(action_prob_batch.squeeze(-1)),
                                                        recursive=True)
 
                 critic_loss.backward(retain_graph=True)

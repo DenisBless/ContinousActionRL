@@ -72,7 +72,9 @@ class Retrace(torch.nn.Module):
             r_t = rewards[:, :-1]
             target_Q_next_t = target_Q[:, 1:]
             expected_Q_next_t = expected_target_Q[:, 1:]
-            c_next_t = self.calc_retrace_weights(target_policy_probs, behaviour_policy_probs)[:, 1:]
+            log_importance_weights = (target_policy_probs - behaviour_policy_probs)
+            importance_weights = (torch.exp(torch.clamp(log_importance_weights, max=0)))[:, 1:]
+            c_next_t = importance_weights
 
             Q_ret = torch.zeros_like(Q_t, dtype=torch.float)  # (B,T)
             Q_ret[:, -1] = Q[:, -1]
@@ -111,4 +113,12 @@ class Retrace(torch.nn.Module):
 
         assert not torch.isnan(retrace_weights).any(), "Error, a least one NaN value found in retrace weights."
         return retrace_weights
+
+    @staticmethod
+    def remove_last_timestep(x):
+        return x.narrow(-2, 0, x.shape[-2] - 1)
+
+    @staticmethod
+    def remove_first_timestep(x):
+        return x.narrow(-2, 1, x.shape[-2] - 1)
 
