@@ -10,7 +10,7 @@ parser.add_argument('--update_targnets_every', type=int, default=50,
                     help='Number of learning steps before the target networks are updated.')
 parser.add_argument('--learning_steps', type=int, default=1000,
                     help='Total number of learning timesteps before sampling trajectories.')
-parser.add_argument('--num_learning_iterations', type=int, default=5000,
+parser.add_argument('--num_runs', type=int, default=5000,
                     help='Number of learning iterations.')
 parser.add_argument('--out_layer', type=str, default='linear',
                     help='Output layer of the actor network. Choose between <linear>, <tanh>.')

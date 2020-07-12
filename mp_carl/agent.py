@@ -3,6 +3,7 @@ import copy
 from mp_carl.loss_fn import Retrace, ActorLoss
 from mp_carl.actor_critic_networks import Actor, Critic
 import torch
+import numpy as np
 
 
 class Agent:
@@ -31,11 +32,17 @@ class Agent:
 
         self.num_trajectories = arg_parser.num_trajectories
         self.update_targnets_every = arg_parser.update_targnets_every
-        self.num_learning_iter = arg_parser.num_learning_iter
+        self.learning_steps = arg_parser.num_learning_iter
+        self.num_runs = arg_parser.num_runs
         self.global_gradient_norm = arg_parser.global_gradient_norm
 
-    def sample(self):
+    def run(self):
+        for i in range(self.num_runs):
+            self.sample()
+            self.learn()
+            self.evaluate()
 
+    def sample(self):
         self.actor.copy_params(self.param_server.shared_actor)
 
         for i in range(self.num_trajectories):
@@ -72,7 +79,7 @@ class Agent:
 
     def learn(self):
 
-        for i in range(self.num_learning_iter):
+        for i in range(self.learning_steps):
             self.actor.copy_params(self.param_server.shared_actor)
             self.critic.copy_params(self.param_server.shared_critic)
 
@@ -136,6 +143,31 @@ class Agent:
             actor_loss.backward()
 
             self.param_server.receive_gradients(actor=self.actor, critic=self.critic)
+
+    def evaluate(self):
+        self.actor.copy_params(self.param_server.shared_actor)
+        self.actor.eval()  # Eval mode: Sets the action variance to zero, disables batch-norm and dropout etc.
+
+        obs = torch.tensor(self.env.reset(), dtype=torch.float)
+        obs = obs.to(self.device)
+        with torch.no_grad():
+                rewards = []
+                done = False
+                while not done:
+                    mean, std = self.actor.forward(observation=obs)
+                    mean = mean.to(self.device)
+                    std = std.to(self.device)
+                    action, action_log_prob = self.actor.action_sample(mean, std)
+                    action = action.to(self.device)
+                    next_obs, reward, done, _ = self.env.step(action.detach().cpu().numpy())
+                    rewards.append(reward)
+                    obs = torch.tensor(next_obs, dtype=torch.float).to(self.device)
+
+                    if done:
+                        obs = torch.tensor(self.env.reset(), dtype=torch.float).to(self.device)
+                        print("Mean reward: ", np.mean(rewards))
+
+        self.actor.train()  # Back to train mode
 
     def update_targnets(self):
         """
