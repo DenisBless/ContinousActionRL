@@ -4,14 +4,21 @@ import torch
 
 
 class ParameterServer:
-    def __init__(self, G, actor_lr, critic_lr, num_actions, num_obs, lock):
+    def __init__(self, G, actor_lr, critic_lr, num_actions, num_obs, lock, arg_parser):
+
+        device = "cuda:0" if torch.cuda.is_available() else "cpu"
+
         self.G = G  # number of gradients before updating networks
         self.N = torch.tensor(0)  # current number of gradients
         self.N.share_memory_()
         self.lock = lock  # enter monitor to prevent race condition
-        self.shared_actor = Actor(num_actions=num_actions, num_obs=num_obs)
+        self.shared_actor = Actor(num_actions=num_actions,
+                                  num_obs=num_obs,
+                                  mean_scale=arg_parser.action_mean_scale,
+                                  std_low=arg_parser.action_std_low,
+                                  std_high=arg_parser.action_std_high).to(device)
         self.shared_actor.share_memory()
-        self.shared_critic = Critic(num_actions=num_actions, num_obs=num_obs)
+        self.shared_critic = Critic(num_actions=num_actions, num_obs=num_obs).to(device)
         self.shared_critic.share_memory()
         self.actor_optimizer = SharedAdam(self.shared_actor.parameters(), actor_lr)
         self.critic_optimizer = SharedAdam(self.shared_critic.parameters(), critic_lr)

@@ -1,5 +1,4 @@
 import numpy as np
-from abc import ABC, abstractmethod
 import torch
 import torch.nn.functional as F
 from torch.distributions import Normal
@@ -35,7 +34,9 @@ class Critic(torch.nn.Module):
             "Error, dimension mismatch. Dimensions: " \
             "action: " + str(action.dim()) + " observation: " + str(observation.dim())
 
+        print("1")
         x = F.elu(self.input(torch.cat((action, observation), dim=-1)))  # dim 2 are the input features
+        print("2")
         x = F.layer_norm(x, normalized_shape=list(x.shape)) if self.layer_norm else x
         x = F.elu(self.hidden1(x))
         x = F.layer_norm(x, normalized_shape=list(x.shape)) if self.layer_norm else x

@@ -1,10 +1,6 @@
-from collections import namedtuple
-from multiprocessing import Manager, Lock
+from torch.multiprocessing import Manager
 import random
 import torch
-
-Transition = namedtuple('Transition',
-                        ('state', 'action', 'reward', 'action_prob'))
 
 
 class SharedReplayBuffer(object):
@@ -40,8 +36,6 @@ class SharedReplayBuffer(object):
             self.reward_memory[self.position] = rewards
             self.log_prob_memory[self.position] = log_probs
 
-            print(self.position)
-
     def sample(self):
         with self.lock:
             if not self.full:
@@ -51,20 +45,9 @@ class SharedReplayBuffer(object):
         return self.state_memory[idx].squeeze(dim=0), self.action_memory[idx].squeeze(dim=0), \
                self.reward_memory[idx].squeeze(dim=0), self.log_prob_memory[idx].squeeze(dim=0)
 
-    def clear(self):
-        self.state_memory = torch.tensor([self.capacity, self.num_obs], dtype=torch.float32)
-        self.state_memory.share_memory_()
-        self.action_memory = torch.tensor([self.capacity, self.num_actions], dtype=torch.float32)
-        self.action_memory.share_memory_()
-        self.reward_memory = torch.tensor([self.capacity, 1], dtype=torch.float32)
-        self.reward_memory.share_memory_()
-        self.log_prob_memory = torch.tensor([self.capacity, self.num_actions], dtype=torch.float32)
-        self.log_prob_memory.share_memory_()
-
     def __len__(self):
         with self.lock:
             return self.position
-
 
 
 # Not used but maybe better than working with tensors because it allows flexible trajectory length
@@ -103,18 +86,7 @@ class SharedReplayBuffer2(object):
     def sample(self):
         with self.lock:
             idx = random.sample(range(len(self.state_memory)), 1)[0]
-            # print(self.state_memory[idx])
         return self.state_memory[idx], self.action_memory[idx], self.reward_memory[idx], self.log_prob_memory[idx]
-
-    def clear(self):
-        self.state_memory = torch.tensor([self.capacity, self.num_obs], dtype=torch.float32)
-        self.state_memory.share_memory_()
-        self.action_memory = torch.tensor([self.capacity, self.num_actions], dtype=torch.float32)
-        self.action_memory.share_memory_()
-        self.reward_memory = torch.tensor([self.capacity, 1], dtype=torch.float32)
-        self.reward_memory.share_memory_()
-        self.log_prob_memory = torch.tensor([self.capacity, self.num_actions], dtype=torch.float32)
-        self.log_prob_memory.share_memory_()
 
     def __len__(self):
         with self.lock:

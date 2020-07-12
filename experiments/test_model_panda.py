@@ -4,7 +4,7 @@ from continous_action_RL.sampler import Sampler
 from continous_action_RL.evaluator import Evaluator
 from continous_action_RL.logger import Logger
 from continous_action_RL.learner import Learner
-from ALR_SF.SimulationFramework.simulation.src.gym_sf.mujoco.mujoco_envs.reach_env.reach_env import ReachEnv
+# from ALR_SF.SimulationFramework.simulation.src.gym_sf.mujoco.mujoco_envs.reach_env.reach_env import ReachEnv
 import argparse
 import pathlib
 import torch
@@ -104,7 +104,8 @@ if __name__ == '__main__':
 
     device = "cuda:0" if torch.cuda.is_available() else "cpu"
 
-    actor.load_state_dict(torch.load(args.model_save_path + "actor_70"))
+    actor.load_state_dict(torch.load(args.model_save_path + "actor_1000"))
+    # actor.load_state_dict(torch.load(args.model_save_path + "actor_70"))
 
     actor = actor.to(device)
     critic = critic.to(device)
