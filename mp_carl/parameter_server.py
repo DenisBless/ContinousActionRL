@@ -1,5 +1,6 @@
 from mp_carl.actor_critic_networks import Actor, Critic
 from mp_carl.optimizer import SharedAdam
+import torch
 
 
 class ParameterServer:
@@ -14,10 +15,13 @@ class ParameterServer:
         self.actor_optimizer = SharedAdam(self.shared_actor.parameters(), actor_lr)
         self.critic_optimizer = SharedAdam(self.shared_critic.parameters(), critic_lr)
 
+        self.init_grad()
+
     def receive_gradients(self, actor, critic):
-        self.add_gradients(source_actor=actor, source_critic=critic)
         with self.lock:
+            self.add_gradients(source_actor=actor, source_critic=critic)
             self.N += 1
+            # print(self.N)
             if self.N == self.G:
                 self.update_gradients()  # todo: this should reset gradients -> check
                 self.N = 0
@@ -33,3 +37,12 @@ class ParameterServer:
     def update_gradients(self):
         self.actor_optimizer.step()
         self.critic_optimizer.step()
+        self.actor_optimizer.zero_grad()
+        self.critic_optimizer.zero_grad()
+
+    def init_grad(self):
+        for a_param in self.shared_actor.parameters():
+            a_param.grad = torch.zeros_like(a_param.data)
+
+        for c_param in self.shared_critic.parameters():
+            c_param.grad = torch.zeros_like(c_param.data)

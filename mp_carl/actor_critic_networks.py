@@ -35,7 +35,7 @@ class Critic(torch.nn.Module):
             "Error, dimension mismatch. Dimensions: " \
             "action: " + str(action.dim()) + " observation: " + str(observation.dim())
 
-        x = F.elu(self.input(torch.cat((action, observation), dim=2)))  # dim 2 are the input features
+        x = F.elu(self.input(torch.cat((action, observation), dim=-1)))  # dim 2 are the input features
         x = F.layer_norm(x, normalized_shape=list(x.shape)) if self.layer_norm else x
         x = F.elu(self.hidden1(x))
         x = F.layer_norm(x, normalized_shape=list(x.shape)) if self.layer_norm else x
@@ -88,9 +88,9 @@ class Actor(torch.nn.Module):
             mean, std = self.get_normal_params(x)
         elif self.out_layer == 'linear':
             x = self.output(x)
-            mean = x[:self.num_actions] if x.dim() == 1 else x[:, :, :self.num_actions]
+            mean = x[:self.num_actions] if x.dim() == 1 else x[:, :self.num_actions]
             mean = mean.clamp(min=-self.mean_scale, max=self.mean_scale)
-            std = x[self.num_actions:] if x.dim() == 1 else x[:, :, self.num_actions:]
+            std = x[self.num_actions:] if x.dim() == 1 else x[:, self.num_actions:]
             std = std.clamp(min=self.std_low, max=self.std_high)
         else:
             raise ValueError("Error, choose a valid output layer.")
@@ -176,37 +176,3 @@ class Actor(torch.nn.Module):
     #     return dist.log_prob()
 
 
-class ParameterManager:
-    def __init__(self, num_actions,
-                 num_observations,
-                 mean_scale,
-                 action_std_low,
-                 action_std_high,
-                 action_bound):
-
-        self.actor = Actor(num_actions=num_actions,
-                           num_obs=num_observations,
-                           mean_scale=mean_scale,
-                           std_low=action_std_low,
-                           std_high=action_std_high,
-                           action_bound=(-action_bound, action_bound))
-
-        self.actor.share_memory()
-
-        self.avg_actor = Actor(num_actions=num_actions,
-                               num_obs=num_observations,
-                               mean_scale=mean_scale,
-                               std_low=action_std_low,
-                               std_high=action_std_high,
-                               action_bound=(-action_bound, action_bound))
-
-        self.avg_actor.share_memory()
-        self.avg_actor.copy_params(source_network=self.actor)
-
-        self.critic = Critic(num_actions=num_actions, num_obs=num_observations)
-
-        self.critic.share_memory()
-
-        self.avg_critic = Critic(num_actions=num_actions, num_obs=num_observations)
-        self.avg_critic.share_memory()
-        self.avg_critic.copy_params(source_network=self.critic)

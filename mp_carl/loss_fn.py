@@ -49,18 +49,18 @@ class Retrace(torch.nn.Module):
             with trajectory τ = {(s_0, a_0, r_0),..,(s_k, a_k, r_k)}
         """
 
-        T = Q.shape[1]  # total number of time steps in the trajectory
+        T = Q.shape[0]  # total number of time steps in the trajectory
 
-        Q_t = Q[:, :-1]
+        Q_t = Q[:-1]
 
         with torch.no_grad():
             # We don't want gradients from computing Q_ret, since:
             # ∇φ (Q - Q_ret)^2 ∝ (Q - Q_ret) * ∇φ Q
-            r_t = rewards[:, :-1]
-            target_Q_next_t = target_Q[:, 1:]
-            expected_Q_next_t = expected_target_Q[:, 1:]
+            r_t = rewards[:-1]
+            target_Q_next_t = target_Q[1:]
+            expected_Q_next_t = expected_target_Q[1:]
 
-            c_next_t = self.calc_retrace_weights(target_policy_probs, behaviour_policy_probs)[:, 1:]
+            c_next_t = self.calc_retrace_weights(target_policy_probs, behaviour_policy_probs)[1:]
             # print(c_next_t.mean(), c_next_t.std())
             if logger is not None:
                 logger.add_histogram(tag="retrace/ratio", values=c_next_t)
@@ -68,11 +68,11 @@ class Retrace(torch.nn.Module):
                 logger.add_histogram(tag="retrace/target", values=torch.exp(target_policy_probs))
 
             Q_ret = torch.zeros_like(Q_t, device=self.device, dtype=torch.float)  # (B,T)
-            Q_ret[:, -1] = target_Q_next_t[:, -1]
+            Q_ret[-1] = target_Q_next_t[-1]
 
             for t in reversed(range(1, T - 1)):
-                Q_ret[:, t - 1] = r_t[:, t] + gamma * (expected_Q_next_t[:, t] - c_next_t[:, t] * target_Q_next_t[:, t]) \
-                                  + gamma * c_next_t[:, t] * Q_ret[:, t]
+                Q_ret[t - 1] = r_t[t] + gamma * (expected_Q_next_t[t] - c_next_t[t] * target_Q_next_t[t]) \
+                                  + gamma * c_next_t[t] * Q_ret[t]
 
         return F.mse_loss(Q_t, Q_ret)
 
@@ -96,7 +96,6 @@ class Retrace(torch.nn.Module):
             + str(target_policy_logprob.shape) + " mean: " + str(behaviour_policy_logprob.shape)
 
         num_actions = target_policy_logprob.shape[-1]
-        assert num_actions == 3 #todo tmp
 
         if target_policy_logprob.dim() > 2:
             retrace_weights = (
