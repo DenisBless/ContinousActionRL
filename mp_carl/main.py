@@ -1,7 +1,11 @@
 import argparse
 import os
 import pathlib
+import random
+
+import torch
 import torch.multiprocessing as mp
+import numpy as np
 from torch.utils.tensorboard import SummaryWriter
 from mp_carl.agent import Agent
 from mp_carl.parameter_server import ParameterServer
@@ -13,17 +17,17 @@ parser = argparse.ArgumentParser(description='algorithm arguments')
 # parser.add_argument('--num_worker', type=int, default=os.cpu_count(),
 parser.add_argument('--num_worker', type=int, default=2,
                     help='Number of workers training the agent in parallel.')
-parser.add_argument('--num_grads', type=int, default=20,
+parser.add_argument('--num_grads', type=int, default=10,
                     help='Number of gradients collected before updating the networks.')
-parser.add_argument('--update_targnets_every', type=int, default=60,
+parser.add_argument('--update_targnets_every', type=int, default=200,
                     help='Number of learning steps before the target networks are updated.')
-parser.add_argument('--learning_steps', type=int, default=300,
+parser.add_argument('--learning_steps', type=int, default=2000,
                     help='Total number of learning timesteps before sampling trajectories.')
 parser.add_argument('--num_runs', type=int, default=5000,
                     help='Number of learning iterations.')
-parser.add_argument('--out_layer', type=str, default='linear',
+parser.add_argument('--out_layer', type=str, default='tanh',
                     help='Output layer of the actor network. Choose between <linear>, <tanh>.')
-parser.add_argument('--actor_lr', type=float, default=2e-3,
+parser.add_argument('--actor_lr', type=float, default=2e-4,
                     help='Learning rate for the actor network.')
 parser.add_argument('--critic_lr', type=float, default=2e-4,
                     help='Learning rate for the critic network.')
@@ -39,7 +43,7 @@ parser.add_argument('--trust_region_coeff', type=float, default=0,
                     help='Scaling of the KL-div. between the old action distribution and the current in actor loss.')
 parser.add_argument('--action_mean_scale', type=float, default=2,
                     help='Scales the output of the actor net to [-action_mean_scale, action_mean_scale].')
-parser.add_argument('--action_std_low', type=float, default=5e-1,
+parser.add_argument('--action_std_low', type=float, default=1e-1,
                     help='Lower bound on the standard deviation of the actions.')
 parser.add_argument('--action_std_high', type=float, default=1.,
                     help='Upper bound on the standard deviation of the actions.')
@@ -105,8 +109,8 @@ if __name__ == '__main__':
                                               lock=lock)
 
     logger = None
-    if True:
-    # if args.num_worker == 1:
+    # if True:
+    if args.num_worker == 1:
         logger = SummaryWriter()
         work(param_server=param_server, shared_replay_buffer=shared_replay_buffer, args=args, logger=logger)
     elif args.num_worker > 1:

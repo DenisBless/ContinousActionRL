@@ -63,9 +63,9 @@ class ParameterServer:
 
     def init_grad(self):
         for a_param in self.shared_actor.parameters():
-            a_param.grad = torch.zeros_like(a_param.data)
+            a_param.grad = torch.zeros_like(a_param.data, dtype=torch.float32)
             a_param.grad.share_memory_()
 
         for c_param in self.shared_critic.parameters():
-            c_param.grad = torch.zeros_like(c_param.data)
+            c_param.grad = torch.zeros_like(c_param.data, dtype=torch.float32)
             c_param.grad.share_memory_()

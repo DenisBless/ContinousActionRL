@@ -16,7 +16,7 @@
 # • Todo: Try out increasing dt such that sampling an episode requires less time
 # • Todo: Try out truncating the gaussian distribution directly at the output of the neural network
 # • Todo: Make standard deviation state independent
-# • Todo:
+# • Todo: Try out reward clippint (at least for pendulum)
 # • Todo:
 
 

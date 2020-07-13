@@ -96,6 +96,12 @@ class Agent:
         for i in range(self.learning_steps):
             self.actor.copy_params(self.param_server.shared_actor)
             self.critic.copy_params(self.param_server.shared_critic)
+            # print("Actor", list(self.actor.parameters())[-1].data)
+            # print("Actor", list(self.actor.parameters())[-1].grad)
+            # print("Critic", list(self.critic.parameters())[-1].item())
+            # print("Critic", list(self.critic.parameters())[-1].grad)
+            self.reset_grad(self.critic)
+            self.reset_grad(self.actor)
 
             # Update the target networks
             if i % self.update_targnets_every == 0:
@@ -202,3 +208,9 @@ class Agent:
         """
         self.target_actor.load_state_dict(self.actor.state_dict())
         self.target_critic.load_state_dict(self.critic.state_dict())
+
+    @staticmethod
+    def reset_grad(net):
+        for param in net.parameters():
+            param.grad = torch.zeros_like(param.data, dtype=torch.float32)
+
