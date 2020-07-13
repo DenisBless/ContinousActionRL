@@ -2,6 +2,7 @@ import argparse
 import os
 import pathlib
 import torch.multiprocessing as mp
+from torch.utils.tensorboard import SummaryWriter
 from mp_carl.agent import Agent
 from mp_carl.parameter_server import ParameterServer
 from mp_carl.shared_replay_buffer import SharedReplayBuffer
@@ -9,8 +10,8 @@ from mp_carl.shared_replay_buffer import SharedReplayBuffer
 parser = argparse.ArgumentParser(description='algorithm arguments')
 
 # Algorithm parameter
-parser.add_argument('--num_worker', type=int, default=os.cpu_count(),
-# parser.add_argument('--num_worker', type=int, default=2,
+# parser.add_argument('--num_worker', type=int, default=os.cpu_count(),
+parser.add_argument('--num_worker', type=int, default=2,
                     help='Number of workers training the agent in parallel.')
 parser.add_argument('--num_grads', type=int, default=20,
                     help='Number of gradients collected before updating the networks.')
@@ -76,10 +77,11 @@ NUM_ACTIONS = 1
 NUM_OBSERVATIONS = 3
 
 
-def work(param_server, shared_replay_buffer, args):
+def work(param_server, shared_replay_buffer, args, logger=None):
     worker = Agent(param_server=param_server,
                    shared_replay_buffer=shared_replay_buffer,
-                   arg_parser=args)
+                   arg_parser=args,
+                   logger=logger)
     worker.run()
 
 
@@ -102,11 +104,13 @@ if __name__ == '__main__':
                                               num_obs=NUM_OBSERVATIONS,
                                               lock=lock)
 
+    logger = None
     if True:
     # if args.num_worker == 1:
-        work(param_server=param_server, shared_replay_buffer=shared_replay_buffer, args=args)
+        logger = SummaryWriter()
+        work(param_server=param_server, shared_replay_buffer=shared_replay_buffer, args=args, logger=logger)
     elif args.num_worker > 1:
-        processes = [mp.Process(target=work, args=(param_server, shared_replay_buffer, args))
+        processes = [mp.Process(target=work, args=(param_server, shared_replay_buffer, args, logger))
                      for _ in range(args.num_worker)]
         for p in processes:
             p.start()

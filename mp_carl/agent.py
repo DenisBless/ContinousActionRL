@@ -16,7 +16,6 @@ class Agent:
 
         self.device = "cuda:0" if torch.cuda.is_available() else "cpu"
 
-
         self.param_server = param_server
         self.shared_replay_buffer = shared_replay_buffer
         self.logger = logger
@@ -24,7 +23,12 @@ class Agent:
         self.num_actions = self.env.action_space.shape[0]
         self.num_obs = self.env.observation_space.shape[0]
 
-        self.actor = Actor(num_actions=self.num_actions, num_obs=self.num_obs).to(self.device)
+        self.actor = Actor(num_actions=self.num_actions,
+                           num_obs=self.num_obs,
+                           mean_scale=arg_parser.action_mean_scale,
+                           std_low=arg_parser.action_std_low,
+                           std_high=arg_parser.action_std_high).to(self.device)
+
         self.critic = Critic(num_actions=self.num_actions, num_obs=self.num_obs).to(self.device)
         self.target_actor = copy.deepcopy(self.actor).to(self.device)
         self.target_critic = copy.deepcopy(self.critic).to(self.device)
@@ -38,6 +42,7 @@ class Agent:
         self.num_runs = arg_parser.num_runs
         self.global_gradient_norm = arg_parser.global_gradient_norm
         self.render = arg_parser.render
+        self.log_every = arg_parser.log_interval
 
     def run(self):
         for i in range(self.num_runs):
@@ -63,7 +68,7 @@ class Agent:
                 std = std.to(self.device)
                 action, action_log_prob = self.actor.action_sample(mean, std)
                 action = action.to(self.device)
-                next_obs, reward, done, _ = self.env.step(action.detach().cpu().numpy())
+                next_obs, reward, done, _ = self.env.step(action.detach().cpu())
                 next_obs = torch.tensor(next_obs, dtype=torch.float).to(self.device)
                 reward = torch.tensor(reward, dtype=torch.float).to(self.device)
                 states.append(obs)
@@ -81,7 +86,7 @@ class Agent:
             rewards = torch.stack(rewards).to(self.device)
             action_log_probs = torch.stack(action_log_probs).to(self.device)
 
-            if self.logger is not None and i % self.logger.log_every == 0:
+            if self.logger is not None and i % self.log_every == 0:
                 self.logger.add_scalar(scalar_value=rewards.mean(), tag="Reward/train")
 
             self.shared_replay_buffer.push(states, actions.detach(), rewards, action_log_probs.detach())
@@ -100,7 +105,8 @@ class Agent:
             self.critic.train()
 
             states, actions, rewards, behaviour_log_pr = self.shared_replay_buffer.sample()
-            states, actions, behaviour_log_pr = states.to(self.device), actions.to(self.device), behaviour_log_pr.to(self.device)
+            states, actions, behaviour_log_pr = states.to(self.device), actions.to(self.device), behaviour_log_pr.to(
+                self.device)
 
             # Q(a_t, s_t)
             Q = self.critic.forward(actions, states)
@@ -108,7 +114,7 @@ class Agent:
             # Q_target(a_t, s_t)
             target_Q = self.target_critic.forward(actions, states)
 
-            # Compute 𝔼_π_target [Q(s_t,•)] with a ~ π_target(•|s_t), log(π_target(a|s))
+            # Compute 𝔼_π_target [Q(s_t,•)] with a ~ π_target(•|s_t), log(π_target(a|s)) with 1 sample
             mean, std = self.target_actor.forward(states)
             mean, std = mean.to(self.device), std.to(self.device)
             action_sample, _ = self.target_actor.action_sample(mean, std)
@@ -117,10 +123,10 @@ class Agent:
             # log(π_target(a_t | s_t))
             target_action_log_prob = self.target_actor.get_log_prob(actions, mean, std)
 
-            # a ~ π(•|s_t), log(π(a|s))
+            # a ~ π(•|s_t), log(π(a|s_t))
             current_mean, current_std = self.actor.forward(states)
             current_actions, current_action_log_prob = self.actor.action_sample(current_mean, current_std)
-            actions.to(self.device)
+            current_actions.to(self.device)
 
             # Q(a, s_t)
             current_Q = self.critic.forward(current_actions, states)
@@ -137,14 +143,6 @@ class Agent:
                                                    behaviour_policy_probs=behaviour_log_pr,
                                                    logger=self.logger)
 
-            # critic_loss = self.critic_loss.forward(Q=Q.squeeze(-1),
-            #                                        expected_target_Q=expected_target_Q.squeeze(-1),
-            #                                        target_Q=target_Q.squeeze(-1),
-            #                                        rewards=rewards.squeeze(-1),
-            #                                        target_policy_probs=target_action_log_prob.squeeze(-1),
-            #                                        behaviour_policy_probs=behaviour_log_pr.squeeze(-1),
-            #                                        logger=self.logger)
-
             critic_loss.backward(retain_graph=True)
 
             # Actor update
@@ -157,6 +155,13 @@ class Agent:
             actor_loss.backward()
 
             self.param_server.receive_gradients(actor=self.actor, critic=self.critic)
+
+            # Keep track of different values
+            if self.logger is not None and i % self.log_every == 0:
+                self.logger.add_scalar(scalar_value=actor_loss.item(), tag="Loss/Actor_loss")
+                self.logger.add_scalar(scalar_value=critic_loss.item(), tag="Loss/Critic_loss")
+                self.logger.add_histogram(values=current_mean, tag="Statistics/Action_mean")
+                self.logger.add_histogram(values=current_std, tag="Statistics/Action_std")
 
         self.actor.copy_params(self.param_server.shared_actor)
         self.critic.copy_params(self.param_server.shared_critic)
@@ -183,6 +188,8 @@ class Agent:
                 if done:
                     obs = torch.tensor(self.env.reset(), dtype=torch.float).to(self.device)
                     print("Mean reward: ", np.mean(rewards))
+                    if self.logger is not None:
+                        self.logger.add_scalar(scalar_value=np.mean(rewards), tag="Reward/test")
 
         self.actor.train()  # Back to train mode
 

@@ -29,9 +29,9 @@ class ParameterServer:
         with self.lock:
             self.add_gradients(source_actor=actor, source_critic=critic)
             self.N += 1
-            # print("Grad Nr:", self.N)
             if self.N >= self.G:
                 self.update_gradients()  # todo: this should reset gradients -> check
+                # Reset to 0. Ugly but otherwise not working because position will not be in shared mem if new assigned.
                 self.N -= self.N
 
     def add_gradients(self, source_actor, source_critic):

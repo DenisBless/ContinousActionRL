@@ -1,15 +1,15 @@
 """
 • Create parameter server -> done
-• Create replay buffer with shared memory
+• Create replay buffer with shared memory -> done
 • Create a learning and sampler -> done
-• Create main starting multiple processes
-• Create
-• Create
+• Create main starting multiple processes -> done
 """
 
 from multiprocessing import Manager, Lock
 import multiprocessing as mp
 
+
+# Some tests regarding multiprocessing
 
 def cube(a, u, lock):
     for z in a:
