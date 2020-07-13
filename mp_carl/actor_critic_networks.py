@@ -34,9 +34,7 @@ class Critic(torch.nn.Module):
             "Error, dimension mismatch. Dimensions: " \
             "action: " + str(action.dim()) + " observation: " + str(observation.dim())
 
-        print("1")
         x = F.elu(self.input(torch.cat((action, observation), dim=-1)))  # dim 2 are the input features
-        print("2")
         x = F.layer_norm(x, normalized_shape=list(x.shape)) if self.layer_norm else x
         x = F.elu(self.hidden1(x))
         x = F.layer_norm(x, normalized_shape=list(x.shape)) if self.layer_norm else x
@@ -46,10 +44,6 @@ class Critic(torch.nn.Module):
     def copy_params(self, source_network):
         for param, source_param in zip(self.parameters(), source_network.parameters()):
             param.data.copy_(source_param.data)
-
-    def copy_gradients(self, source_network):
-        for param, source_param in zip(self.parameters(), source_network.parameters()):
-            param._grad = source_param.grad
 
 
 class Actor(torch.nn.Module):
@@ -165,9 +159,6 @@ class Actor(torch.nn.Module):
         for param, source_param in zip(self.parameters(), source_network.parameters()):
             param.data.copy_(source_param.data)
 
-    def copy_gradients(self, source_network):
-        for param, source_param in zip(self.parameters(), source_network.parameters()):
-            param._grad = source_param.grad
 
     # def sample(self, mean, std):
     #     dist = torch.distributions.Normal(loc=mean, scale=std)

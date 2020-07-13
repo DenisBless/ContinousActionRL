@@ -20,14 +20,15 @@ class SharedReplayBuffer(object):
         self.position = torch.tensor(0)
         self.position.share_memory_()
 
-        self.full = False
+        self.full = torch.tensor(0)
+        self.full.share_memory_()
 
     def push(self, states, actions, rewards, log_probs):
         """Saves a transition."""
         with self.lock:
             self.position += 1
             if self.position > self.capacity - 1:
-                self.full = True
+                self.full += 1
                 # Reset to 0. Ugly but otherwise not working because position will not be in shared mem if new assigned.
                 self.position -= self.position
 
@@ -39,7 +40,7 @@ class SharedReplayBuffer(object):
     def sample(self):
         with self.lock:
             if not self.full:
-                idx = random.sample(range(self.position), 1)
+                idx = random.sample(range(1, self.position), 1)
             else:
                 idx = random.sample(range(self.capacity), 1)
         return self.state_memory[idx].squeeze(dim=0), self.action_memory[idx].squeeze(dim=0), \
@@ -50,7 +51,10 @@ class SharedReplayBuffer(object):
             return self.position
 
 
+"""
 # Not used but maybe better than working with tensors because it allows flexible trajectory length
+
+
 class SharedReplayBuffer2(object):
     def __init__(self, num_actions, trajectory_length, num_obs, capacity, lock):
         self.capacity = capacity
@@ -66,7 +70,7 @@ class SharedReplayBuffer2(object):
         self.full = False
 
     def push(self, states, actions, rewards, log_probs):
-        """Saves a transition."""
+        
         with self.lock:
             if len(self.state_memory) < self.capacity:
                 self.state_memory.append(None)
@@ -91,3 +95,4 @@ class SharedReplayBuffer2(object):
     def __len__(self):
         with self.lock:
             return self.position
+"""

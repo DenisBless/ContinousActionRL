@@ -37,6 +37,7 @@ class Agent:
         self.learning_steps = arg_parser.learning_steps
         self.num_runs = arg_parser.num_runs
         self.global_gradient_norm = arg_parser.global_gradient_norm
+        self.render = arg_parser.render
 
     def run(self):
         for i in range(self.num_runs):
@@ -70,6 +71,9 @@ class Agent:
                 rewards.append(reward)
                 action_log_probs.append(action_log_prob)
                 obs = next_obs
+
+                if self.render:
+                    self.env.render()
 
             # turn lists into tensors
             states = torch.stack(states).to(self.device)
