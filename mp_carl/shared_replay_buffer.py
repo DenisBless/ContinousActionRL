@@ -27,6 +27,8 @@ class SharedReplayBuffer(object):
         """Saves a transition."""
         with self.lock:
             self.position += 1
+            assert self.position.is_shared()
+            assert self.state_memory.is_shared()
             if self.position > self.capacity - 1:
                 self.full += 1
                 # Reset to 0. Ugly but otherwise not working because position will not be in shared mem if new assigned.

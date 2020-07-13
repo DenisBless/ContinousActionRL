@@ -1,11 +1,8 @@
 import argparse
 import os
 import pathlib
-import random
 
-import torch
 import torch.multiprocessing as mp
-import numpy as np
 from torch.utils.tensorboard import SummaryWriter
 from mp_carl.agent import Agent
 from mp_carl.parameter_server import ParameterServer
@@ -17,7 +14,7 @@ parser = argparse.ArgumentParser(description='algorithm arguments')
 # parser.add_argument('--num_worker', type=int, default=os.cpu_count(),
 parser.add_argument('--num_worker', type=int, default=2,
                     help='Number of workers training the agent in parallel.')
-parser.add_argument('--num_grads', type=int, default=10,
+parser.add_argument('--num_grads', type=int, default=2,
                     help='Number of gradients collected before updating the networks.')
 parser.add_argument('--update_targnets_every', type=int, default=200,
                     help='Number of learning steps before the target networks are updated.')
@@ -27,9 +24,9 @@ parser.add_argument('--num_runs', type=int, default=5000,
                     help='Number of learning iterations.')
 parser.add_argument('--out_layer', type=str, default='tanh',
                     help='Output layer of the actor network. Choose between <linear>, <tanh>.')
-parser.add_argument('--actor_lr', type=float, default=2e-4,
+parser.add_argument('--actor_lr', type=float, default=7e-5,
                     help='Learning rate for the actor network.')
-parser.add_argument('--critic_lr', type=float, default=2e-4,
+parser.add_argument('--critic_lr', type=float, default=7e-5,
                     help='Learning rate for the critic network.')
 parser.add_argument('--layer_norm', type=bool, default=False,
                     help='Includes a layer norm between FC layer in the actor and critic network.')

@@ -83,7 +83,7 @@ class Actor(torch.nn.Module):
             mean, std = self.get_normal_params(x)
         elif self.out_layer == 'linear':
             x = self.output(x)
-            # todo look at values bevore bounding them
+            # todo look at values before bounding them
             mean = x[:self.num_actions] if x.dim() == 1 else x[:, :self.num_actions]
             mean = mean.clamp(min=-self.mean_scale, max=self.mean_scale)
             std = x[self.num_actions:] if x.dim() == 1 else x[:, self.num_actions:]

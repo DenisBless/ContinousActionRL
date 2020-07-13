@@ -63,10 +63,10 @@ class Retrace(torch.nn.Module):
 
             c_next_t = self.calc_retrace_weights(target_policy_probs, behaviour_policy_probs)[1:]
             # print(c_next_t.mean(), c_next_t.std())
-            if logger is not None:
-                logger.add_histogram(tag="retrace/ratio", values=c_next_t)
-                logger.add_histogram(tag="retrace/behaviour", values=torch.exp(behaviour_policy_probs))
-                logger.add_histogram(tag="retrace/target", values=torch.exp(target_policy_probs))
+            # if logger is not None:
+            #     logger.add_histogram(tag="retrace/ratio", values=c_next_t)
+            #     logger.add_histogram(tag="retrace/behaviour", values=torch.exp(behaviour_policy_probs))
+            #     logger.add_histogram(tag="retrace/target", values=torch.exp(target_policy_probs))
 
             Q_ret = torch.zeros_like(Q_t, device=self.device, dtype=torch.float)  # (B,T)
             Q_ret[-1] = target_Q_next_t[-1]

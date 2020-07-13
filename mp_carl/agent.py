@@ -1,5 +1,7 @@
 import copy
 
+from torch.utils.tensorboard import SummaryWriter
+
 from mp_carl.loss_fn import Retrace, ActorLoss
 from mp_carl.actor_critic_networks import Actor, Critic
 import torch
@@ -18,7 +20,7 @@ class Agent:
 
         self.param_server = param_server
         self.shared_replay_buffer = shared_replay_buffer
-        self.logger = logger
+        # self.logger = logger
         self.env = gym.make("Pendulum-v0")
         self.num_actions = self.env.action_space.shape[0]
         self.num_obs = self.env.observation_space.shape[0]
@@ -43,6 +45,8 @@ class Agent:
         self.global_gradient_norm = arg_parser.global_gradient_norm
         self.render = arg_parser.render
         self.log_every = arg_parser.log_interval
+
+        self.logger = SummaryWriter()
 
     def run(self):
         for i in range(self.num_runs):
@@ -148,7 +152,6 @@ class Agent:
                                                    target_policy_probs=target_action_log_prob,
                                                    behaviour_policy_probs=behaviour_log_pr,
                                                    logger=self.logger)
-
             critic_loss.backward(retain_graph=True)
 
             # Actor update
@@ -157,7 +160,6 @@ class Agent:
 
             actor_loss = self.actor_loss.forward(Q=current_Q.squeeze(-1),
                                                  action_log_prob=current_action_log_prob.squeeze(-1))
-
             actor_loss.backward()
 
             self.param_server.receive_gradients(actor=self.actor, critic=self.critic)

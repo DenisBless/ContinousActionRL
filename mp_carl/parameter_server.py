@@ -29,6 +29,7 @@ class ParameterServer:
         with self.lock:
             self.add_gradients(source_actor=actor, source_critic=critic)
             self.N += 1
+            assert self.N.is_shared()  # todo
             if self.N >= self.G:
                 self.update_gradients()  # todo: this should reset gradients -> check
                 # Reset to 0. Ugly but otherwise not working because position will not be in shared mem if new assigned.
@@ -45,10 +46,12 @@ class ParameterServer:
 
         for a_param, a_source_param in zip(self.shared_actor.parameters(), source_actor.parameters()):
             a_param.grad += a_source_param.grad / self.G
+            assert a_param.grad.is_shared()
             # a_param.grad_ += a_source_param.grad / self.G # todo grad_ ???
 
         for c_param, c_source_param in zip(self.shared_critic.parameters(), source_critic.parameters()):
             c_param.grad += c_source_param.grad / self.G
+            assert c_param.grad.is_shared()
 
     def update_gradients(self):
         # print("update step")
