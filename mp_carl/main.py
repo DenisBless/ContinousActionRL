@@ -22,18 +22,10 @@ parser.add_argument('--learning_steps', type=int, default=2000,
                     help='Total number of learning timesteps before sampling trajectories.')
 parser.add_argument('--num_runs', type=int, default=5000,
                     help='Number of learning iterations.')
-parser.add_argument('--out_layer', type=str, default='tanh',
-                    help='Output layer of the actor network. Choose between <linear>, <tanh>.')
 parser.add_argument('--actor_lr', type=float, default=2e-4,
                     help='Learning rate for the actor network.')
 parser.add_argument('--critic_lr', type=float, default=2e-4,
                     help='Learning rate for the critic network.')
-# parser.add_argument('--actor_lr', type=float, default=2e-5,
-#                     help='Learning rate for the actor network.')
-# parser.add_argument('--critic_lr', type=float, default=7e-5,
-#                     help='Learning rate for the critic network.')
-parser.add_argument('--layer_norm', type=bool, default=False,
-                    help='Includes a layer norm between FC layer in the actor and critic network.')
 parser.add_argument('--global_gradient_norm', type=float, default=0.5,
                     help='Enables gradient clipping with a specified global parameter L2 norm') # todo not included yet in mp
 parser.add_argument('--num_expectation_samples', type=int, default=1,
@@ -44,21 +36,10 @@ parser.add_argument('--trust_region_coeff', type=float, default=0,
                     help='Scaling of the KL-div. between the old action distribution and the current in actor loss.')
 parser.add_argument('--action_mean_scale', type=float, default=2,
                     help='Scales the output of the actor net to [-action_mean_scale, action_mean_scale].')
-parser.add_argument('--action_std_low', type=float, default=1e-1,
-                    help='Lower bound on the standard deviation of the actions.')
-parser.add_argument('--action_std_high', type=float, default=1.,
-                    help='Upper bound on the standard deviation of the actions.')
 parser.add_argument('--action_bound', type=float, default=2.,
                     help='Clips the action in the range [-action_bound, action_bound].')
 parser.add_argument('--replay_buffer_size', type=int, default=300,
                     help='Size of the replay buffer.')
-parser.add_argument('--log_interval', type=int, default=10,
-                    help='Interval of the logger to collect and print data to tensorboard')
-parser.add_argument('--save_model_every', type=int, default=10,
-                    help='Interval of learning iterations after which the model state dict is saved.')
-parser.add_argument('--model_save_path', type=str,
-                    default=str(pathlib.Path(__file__).resolve().parents[1]) + "/models/",
-                    help='Directory to the saved models.')
 
 # Environment parameter
 parser.add_argument('--episode_length', type=int, default=200,
@@ -77,6 +58,14 @@ parser.add_argument('--action_smoothing', type=bool, default=True,
                     help='Uses number <control_timsteps> to smooth between two action from the agent.')
 parser.add_argument('--render', type=bool, default=False,
                     help='If true, the environment is rendered.')
+parser.add_argument('--log_interval', type=int, default=10,
+                    help='Interval of the logger writing data to the tensorboard.')
+
+#Number of action samples for approximating the value function from the Q function
+NUM_EXPECTATION_SAMPLES = 1
+MODEL_SAVE_path = str(pathlib.Path(__file__).resolve().parents[1]) + "/models/"
+SAVE_MODEL_EVERY = 10
+LOG_INTERVAL = 10
 
 NUM_ACTIONS = 1
 NUM_OBSERVATIONS = 3

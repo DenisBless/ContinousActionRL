@@ -13,11 +13,6 @@ class ParameterServer:
         self.N = torch.tensor(0)  # current number of gradients
         self.N.share_memory_()
         self.lock = lock  # enter monitor to prevent race condition
-        # self.shared_actor = Actor(num_actions=num_actions,
-        #                           num_obs=num_obs,
-        #                           mean_scale=arg_parser.action_mean_scale,
-        #                           std_low=arg_parser.action_std_low,
-        #                           std_high=arg_parser.action_std_high).to(device)
 
         self.shared_actor = Actor(num_actions=num_actions,
                                   num_obs=num_obs).to(device)
@@ -27,15 +22,17 @@ class ParameterServer:
         self.actor_optimizer = SharedAdam(self.shared_actor.parameters(), actor_lr)
         self.critic_optimizer = SharedAdam(self.shared_critic.parameters(), critic_lr)
 
+        self.global_gradient_norm = arg_parser.global_gradient_norm
+
         self.init_grad()
 
     def receive_gradients(self, actor, critic):
         with self.lock:
             self.add_gradients(source_actor=actor, source_critic=critic)
             self.N += 1
-            assert self.N.is_shared()  # todo
+            assert self.N.is_shared()  # todo remove when everything is working
             if self.N >= self.G:
-                self.update_gradients()  # todo: this should reset gradients -> check
+                self.update_gradients()
                 # Reset to 0. Ugly but otherwise not working because position will not be in shared mem if new assigned.
                 self.N -= self.N
 
@@ -51,7 +48,6 @@ class ParameterServer:
         for a_param, a_source_param in zip(self.shared_actor.parameters(), source_actor.parameters()):
             a_param.grad += a_source_param.grad / self.G
             assert a_param.grad.is_shared()
-            # a_param.grad_ += a_source_param.grad / self.G # todo grad_ ???
 
         for c_param, c_source_param in zip(self.shared_critic.parameters(), source_critic.parameters()):
             c_param.grad += c_source_param.grad / self.G
@@ -61,7 +57,18 @@ class ParameterServer:
         # print("update step")
         # print("optim", self.actor_optimizer.param_groups[0]['params'][-1].grad)
         # print(list(self.shared_actor.parameters())[-1])
+
+        # self.print_grad_norm(self.shared_actor)
+        if self.global_gradient_norm is not None:
+            torch.nn.utils.clip_grad_norm_(self.shared_actor.parameters(), self.global_gradient_norm)
+            torch.nn.utils.clip_grad_norm_(self.shared_critic.parameters(), self.global_gradient_norm)
+        # self.print_grad_norm(self.shared_actor)
         self.actor_optimizer.step()
+
+        # n = 0
+        # for i in range(len(list(self.shared_critic.parameters()))):
+        #     n += torch.norm(list(self.shared_critic.parameters())[i].grad)
+        # print(n)
         # print(list(self.shared_actor.parameters())[-1])
         # print("-"*30)
         self.critic_optimizer.step()
@@ -76,3 +83,12 @@ class ParameterServer:
         for c_param in self.shared_critic.parameters():
             c_param.grad = torch.zeros_like(c_param.data, dtype=torch.float32)
             c_param.grad.share_memory_()
+
+    @staticmethod
+    def print_grad_norm(net):
+        n = 0
+        for i in range(len(list(net.parameters()))):
+            n += torch.norm(list(net.parameters())[i].grad)
+        print(n)
+
+

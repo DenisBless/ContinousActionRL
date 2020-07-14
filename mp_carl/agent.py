@@ -3,7 +3,6 @@ import copy
 from torch.utils.tensorboard import SummaryWriter
 
 from mp_carl.loss_fn import Retrace, ActorLoss
-# from mp_carl.actor_critic_networks import Actor, Critic
 from mp_carl.actor_critic_nets_DEV import Actor, Critic
 import torch
 import gym
@@ -46,7 +45,6 @@ class Agent:
         self.update_targnets_every = arg_parser.update_targnets_every
         self.learning_steps = arg_parser.learning_steps
         self.num_runs = arg_parser.num_runs
-        self.global_gradient_norm = arg_parser.global_gradient_norm
         self.render = arg_parser.render
         self.log_every = arg_parser.log_interval
 
@@ -174,6 +172,7 @@ class Agent:
                 self.logger.add_scalar(scalar_value=critic_loss.item(), tag="Loss/Critic_loss")
                 self.logger.add_scalar(scalar_value=current_std, tag="Statistics/Action_std")
                 self.logger.add_histogram(values=current_mean, tag="Statistics/Action_mean")
+                self.logger.add_histogram(values=current_actions, tag="Statistics/Action")
 
         self.actor.copy_params(self.param_server.shared_actor)
         self.critic.copy_params(self.param_server.shared_critic)

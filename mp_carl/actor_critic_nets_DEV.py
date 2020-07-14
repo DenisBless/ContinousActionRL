@@ -23,7 +23,8 @@ class Actor(torch.nn.Module):
                  num_obs: int,
                  actor_layers: List = None,
                  log_std_init: float = 0,
-                 eps=1e-6):
+                 eps: float = 1e-6,
+                 logger=None):
 
         super(Actor, self).__init__()
         self.log_std_init = log_std_init
@@ -54,7 +55,7 @@ class Actor(torch.nn.Module):
         action = torch.tanh(normal_action)
         normal_log_prob = dist.log_prob(normal_action)
         log_prob = normal_log_prob - torch.sum(torch.log(1 - action.pow(2) + self.eps))
-        return 2*action, log_prob
+        return 2 * action, log_prob
 
     def get_log_prob(self, actions: torch.Tensor, mean: torch.Tensor, log_std: torch.Tensor,
                      normal_actions: torch.Tensor = None) -> torch.Tensor:
@@ -102,7 +103,7 @@ class Critic(torch.nn.Module):
         init_weights(self.model)
 
     def forward(self, action, obs):
-        x = torch.cat([action/2, obs], dim=-1) # todo remove /2 by normalize_action()
+        x = torch.cat([action / 2, obs], dim=-1)  # todo remove /2 by normalize_action()
         return self.model(x)
 
     def copy_params(self, source_network):
