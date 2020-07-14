@@ -3,6 +3,7 @@
 • Create replay buffer with shared memory -> done
 • Create a learning and sampler -> done
 • Create main starting multiple processes -> done
+• Create include the "if training" statement in the new nets
 """
 
 from multiprocessing import Manager, Lock

@@ -3,7 +3,8 @@ import copy
 from torch.utils.tensorboard import SummaryWriter
 
 from mp_carl.loss_fn import Retrace, ActorLoss
-from mp_carl.actor_critic_networks import Actor, Critic
+# from mp_carl.actor_critic_networks import Actor, Critic
+from mp_carl.actor_critic_nets_DEV import Actor, Critic
 import torch
 import gym
 import numpy as np
@@ -24,14 +25,17 @@ class Agent:
         self.env = gym.make("Pendulum-v0")
         self.num_actions = self.env.action_space.shape[0]
         self.num_obs = self.env.observation_space.shape[0]
-
         self.actor = Actor(num_actions=self.num_actions,
-                           num_obs=self.num_obs,
-                           mean_scale=arg_parser.action_mean_scale,
-                           std_low=arg_parser.action_std_low,
-                           std_high=arg_parser.action_std_high).to(self.device)
-
+                           num_obs=self.num_obs).to(self.device)
         self.critic = Critic(num_actions=self.num_actions, num_obs=self.num_obs).to(self.device)
+
+        # self.actor = Actor(num_actions=self.num_actions,
+        #                    num_obs=self.num_obs,
+        #                    mean_scale=arg_parser.action_mean_scale,
+        #                    std_low=arg_parser.action_std_low,
+        #                    std_high=arg_parser.action_std_high).to(self.device)
+        #
+        # self.critic = Critic(num_actions=self.num_actions, num_obs=self.num_obs).to(self.device)
         self.target_actor = copy.deepcopy(self.actor).to(self.device)
         self.target_critic = copy.deepcopy(self.critic).to(self.device)
 
@@ -67,7 +71,7 @@ class Agent:
             obs = torch.tensor(self.env.reset(), dtype=torch.float).to(self.device)
             done = False
             while not done:
-                mean, std = self.actor.forward(observation=obs)
+                mean, std = self.actor.forward(obs)
                 mean = mean.to(self.device)
                 std = std.to(self.device)
                 action, action_log_prob = self.actor.action_sample(mean, std)
@@ -168,8 +172,8 @@ class Agent:
             if self.logger is not None and i % self.log_every == 0:
                 self.logger.add_scalar(scalar_value=actor_loss.item(), tag="Loss/Actor_loss")
                 self.logger.add_scalar(scalar_value=critic_loss.item(), tag="Loss/Critic_loss")
+                self.logger.add_scalar(scalar_value=current_std, tag="Statistics/Action_std")
                 self.logger.add_histogram(values=current_mean, tag="Statistics/Action_mean")
-                self.logger.add_histogram(values=current_std, tag="Statistics/Action_std")
 
         self.actor.copy_params(self.param_server.shared_actor)
         self.critic.copy_params(self.param_server.shared_critic)
@@ -184,7 +188,7 @@ class Agent:
             rewards = []
             done = False
             while not done:
-                mean, std = self.actor.forward(observation=obs)
+                mean, std = self.actor.forward(obs)
                 mean = mean.to(self.device)
                 std = std.to(self.device)
                 action, action_log_prob = self.actor.action_sample(mean, std)
@@ -215,4 +219,3 @@ class Agent:
     def reset_grad(net):
         for param in net.parameters():
             param.grad = torch.zeros_like(param.data, dtype=torch.float32)
-

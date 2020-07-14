@@ -7,16 +7,16 @@
 #  position of the robot
 # • Todo: Try using a "burn in" phase where we train the critic a bit on policy to prevent the retrace weights from
 #  going to zero
-# • Todo: Implement torch.rsample. Enables reparameterization trick
+# • Todo: Implement torch.rsample. Enables reparameterization trick -> DONE
 # • Todo: Try out prioritized experience replay
 # • Todo: Try out trust region updates
 # • Todo: Try out learning rate decay
-# • Todo: Try out orthogonal weight init and bias zero
+# • Todo: Try out orthogonal weight init and bias zero -> DONE
 # • Todo: Try to out entropy regularization
 # • Todo: Try out increasing dt such that sampling an episode requires less time
 # • Todo: Try out truncating the gaussian distribution directly at the output of the neural network
 # • Todo: Make standard deviation state independent
-# • Todo: Try out reward clippint (at least for pendulum)
+# • Todo: Try out reward clipping (at least for pendulum)
 # • Todo:
 
 

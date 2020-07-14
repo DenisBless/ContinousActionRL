@@ -1,4 +1,5 @@
-from mp_carl.actor_critic_networks import Actor, Critic
+# from mp_carl.actor_critic_networks import Actor, Critic
+from mp_carl.actor_critic_nets_DEV import Actor, Critic
 from mp_carl.optimizer import SharedAdam
 import torch
 
@@ -12,11 +13,14 @@ class ParameterServer:
         self.N = torch.tensor(0)  # current number of gradients
         self.N.share_memory_()
         self.lock = lock  # enter monitor to prevent race condition
+        # self.shared_actor = Actor(num_actions=num_actions,
+        #                           num_obs=num_obs,
+        #                           mean_scale=arg_parser.action_mean_scale,
+        #                           std_low=arg_parser.action_std_low,
+        #                           std_high=arg_parser.action_std_high).to(device)
+
         self.shared_actor = Actor(num_actions=num_actions,
-                                  num_obs=num_obs,
-                                  mean_scale=arg_parser.action_mean_scale,
-                                  std_low=arg_parser.action_std_low,
-                                  std_high=arg_parser.action_std_high).to(device)
+                                  num_obs=num_obs).to(device)
         self.shared_actor.share_memory()
         self.shared_critic = Critic(num_actions=num_actions, num_obs=num_obs).to(device)
         self.shared_critic.share_memory()
