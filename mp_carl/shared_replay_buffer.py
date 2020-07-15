@@ -1,4 +1,3 @@
-from torch.multiprocessing import Manager
 import random
 import torch
 
@@ -8,27 +7,30 @@ class SharedReplayBuffer(object):
         self.capacity = capacity
         self.num_actions = num_actions
         self.num_obs = num_obs
+
         self.lock = lock
+
         self.state_memory = torch.zeros([capacity, trajectory_length, num_obs], dtype=torch.float32)
         self.state_memory.share_memory_()
         self.action_memory = torch.zeros([capacity, trajectory_length, num_actions], dtype=torch.float32)
         self.action_memory.share_memory_()
         self.reward_memory = torch.zeros([capacity, trajectory_length], dtype=torch.float32)
         self.reward_memory.share_memory_()
-        self.log_prob_memory = torch.zeros([capacity, trajectory_length, num_actions], dtype=torch.float32)
+        self.log_prob_memory = torch.zeros([capacity, trajectory_length], dtype=torch.float32)
         self.log_prob_memory.share_memory_()
+
         self.position = torch.tensor(0)
         self.position.share_memory_()
 
         self.full = torch.tensor(0)
         self.full.share_memory_()
 
-    def push(self, states, actions, rewards, log_probs):
-        """Saves a transition."""
+    def push(self, states, actions, rewards, log_probs) -> None:
         with self.lock:
             self.position += 1
             assert self.position.is_shared()
             assert self.state_memory.is_shared()
+
             if self.position > self.capacity - 1:
                 self.full += 1
                 # Reset to 0. Ugly but otherwise not working because position will not be in shared mem if new assigned.

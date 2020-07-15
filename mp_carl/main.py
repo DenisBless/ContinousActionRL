@@ -1,9 +1,10 @@
 import argparse
 import os
 import pathlib
+import numpy as np
+from gym.spaces import Box
 
 import torch.multiprocessing as mp
-from torch.utils.tensorboard import SummaryWriter
 from mp_carl.agent import Agent
 from mp_carl.parameter_server import ParameterServer
 from mp_carl.shared_replay_buffer import SharedReplayBuffer
@@ -27,7 +28,7 @@ parser.add_argument('--actor_lr', type=float, default=2e-4,
 parser.add_argument('--critic_lr', type=float, default=2e-4,
                     help='Learning rate for the critic network.')
 parser.add_argument('--global_gradient_norm', type=float, default=0.5,
-                    help='Enables gradient clipping with a specified global parameter L2 norm') # todo not included yet in mp
+                    help='Enables gradient clipping with a specified global parameter L2 norm')
 parser.add_argument('--num_expectation_samples', type=int, default=1,
                     help='Number of action samples for approximating the value function from the Q function.')
 parser.add_argument('--entropy_reg', type=float, default=0,
@@ -40,10 +41,12 @@ parser.add_argument('--action_bound', type=float, default=2.,
                     help='Clips the action in the range [-action_bound, action_bound].')
 parser.add_argument('--replay_buffer_size', type=int, default=300,
                     help='Size of the replay buffer.')
+parser.add_argument('--logging', type=bool, default=True,
+                    help='Whether to log data or not.')
 
 # Environment parameter
-parser.add_argument('--episode_length', type=int, default=200,
-                    help='Length of a episode.')
+# parser.add_argument('--episode_length', type=int, default=200,
+#                     help='Length of a episode.')
 parser.add_argument('--num_eval_trajectories', type=int, default=1,
                     help='Number of trajectories used for evaluating the policy.')
 parser.add_argument('--num_trajectories', type=int, default=20,
@@ -61,21 +64,34 @@ parser.add_argument('--render', type=bool, default=False,
 parser.add_argument('--log_interval', type=int, default=10,
                     help='Interval of the logger writing data to the tensorboard.')
 
-#Number of action samples for approximating the value function from the Q function
+# Number of action samples for approximating the value function from the Q function
 NUM_EXPECTATION_SAMPLES = 1
 MODEL_SAVE_path = str(pathlib.Path(__file__).resolve().parents[1]) + "/models/"
 SAVE_MODEL_EVERY = 10
 LOG_INTERVAL = 10
 
+# Pendulum
 NUM_ACTIONS = 1
 NUM_OBSERVATIONS = 3
+EPISODE_LENGTH = 200
+ACTION_SPACE = Box(low=np.array([-2.]),
+                   high=np.array([2.]))
+OBS_SPACE = Box(low=np.array([-1., -1., -8.]),
+                high=np.array([1., 1., 8.]))
+
+# HalfCheetah
+# NUM_ACTIONS = 6
+# NUM_OBSERVATIONS = 17
+# ACTION_SPACE = Box(low=np.array([-1., -1., -1., -1., -1., -1.]),
+#                    high=np.array([1., 1., 1., 1., 1., 1.]))
+# OBS_SPACE = None  # observation space is unbounded
+# EPISODE_LENGTH = 1000
 
 
-def work(param_server, shared_replay_buffer, args, logger=None):
+def work(param_server, replay_buffer, parser_args):
     worker = Agent(param_server=param_server,
-                   shared_replay_buffer=shared_replay_buffer,
-                   arg_parser=args,
-                   logger=logger)
+                   shared_replay_buffer=replay_buffer,
+                   parser_args=parser_args)
     worker.run()
 
 
@@ -84,32 +100,31 @@ if __name__ == '__main__':
 
     lock = mp.Lock()
     args = parser.parse_args()
-    param_server = ParameterServer(G=args.num_grads,
-                                   actor_lr=args.actor_lr,
-                                   critic_lr=args.critic_lr,
-                                   num_actions=NUM_ACTIONS,
-                                   num_obs=NUM_OBSERVATIONS,
-                                   lock=lock,
-                                   arg_parser=args)
+    shared_param_server = ParameterServer(G=args.num_grads,
+                                          actor_lr=args.actor_lr,
+                                          critic_lr=args.critic_lr,
+                                          num_actions=NUM_ACTIONS,
+                                          num_obs=NUM_OBSERVATIONS,
+                                          lock=lock,
+                                          arg_parser=args)
 
     shared_replay_buffer = SharedReplayBuffer(capacity=args.replay_buffer_size,
-                                              trajectory_length=args.episode_length,
+                                              trajectory_length=EPISODE_LENGTH,
                                               num_actions=NUM_ACTIONS,
                                               num_obs=NUM_OBSERVATIONS,
                                               lock=lock)
 
-    logger = None
-    # if True:
     if args.num_worker == 1:
-        logger = SummaryWriter()
-        work(param_server=param_server, shared_replay_buffer=shared_replay_buffer, args=args, logger=logger)
+        work(param_server=shared_param_server, replay_buffer=shared_replay_buffer, parser_args=args)
+
     elif args.num_worker > 1:
-        processes = [mp.Process(target=work, args=(param_server, shared_replay_buffer, args, logger))
+        processes = [mp.Process(target=work, args=(shared_param_server, shared_replay_buffer, args))
                      for _ in range(args.num_worker)]
         for p in processes:
             p.start()
 
         for p in processes:
             p.join()
+
     else:
         raise ValueError("Error, the number of workers has to be positive.")

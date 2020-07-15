@@ -14,6 +14,7 @@
 # • Todo: Use mocap pos as endeffector pos in order to calculate the reward instead of using the endeffector
 #  position of the robot
 # • Todo: Try out increasing dt such that sampling an episode requires less time
+# • Todo: Initialize each worker with a different seed
 
 
 """Ideas"""
@@ -28,4 +29,5 @@
 """Notes and warnings"""
 # • when using trjectories with different lengths be careful when reversing the trajectory for computing the
 #   retrace loss because the trailing zeros should NOT be reversed!
-# •
+
+# • when updating the target networks in the mp setting the gradients will again be set to true

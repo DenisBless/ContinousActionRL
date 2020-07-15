@@ -6,7 +6,6 @@ class Retrace(torch.nn.Module):
     def __init__(self):
         super(Retrace, self).__init__()
         self.device = "cuda:0" if torch.cuda.is_available() else "cpu"
-        # self.device = "cpu"
 
     def forward(self,
                 Q,
@@ -62,18 +61,18 @@ class Retrace(torch.nn.Module):
             expected_Q_next_t = expected_target_Q[1:]
 
             c_next_t = self.calc_retrace_weights(target_policy_probs, behaviour_policy_probs)[1:]
-            # print(c_next_t.mean(), c_next_t.std())
-            # if logger is not None:
-            #     logger.add_histogram(tag="retrace/ratio", values=c_next_t)
-            #     logger.add_histogram(tag="retrace/behaviour", values=torch.exp(behaviour_policy_probs))
-            #     logger.add_histogram(tag="retrace/target", values=torch.exp(target_policy_probs))
+
+            if logger is not None:
+                logger.add_histogram(tag="retrace/ratio", values=c_next_t)
+                logger.add_histogram(tag="retrace/behaviour", values=behaviour_policy_probs)
+                logger.add_histogram(tag="retrace/target", values=target_policy_probs)
 
             Q_ret = torch.zeros_like(Q_t, device=self.device, dtype=torch.float)  # (B,T)
             Q_ret[-1] = target_Q_next_t[-1]
 
             for t in reversed(range(1, T - 1)):
                 Q_ret[t - 1] = r_t[t] + gamma * (expected_Q_next_t[t] - c_next_t[t] * target_Q_next_t[t]) \
-                                  + gamma * c_next_t[t] * Q_ret[t]
+                               + gamma * c_next_t[t] * Q_ret[t]
 
         return F.mse_loss(Q_t, Q_ret)
 
@@ -96,16 +95,10 @@ class Retrace(torch.nn.Module):
             "Error, shape mismatch. Shapes: target_policy_logprob: " \
             + str(target_policy_logprob.shape) + " mean: " + str(behaviour_policy_logprob.shape)
 
-        num_actions = target_policy_logprob.shape[-1]
+        log_retrace_weights = (target_policy_logprob - behaviour_policy_logprob).clamp(max=0)
 
-        if target_policy_logprob.dim() > 2:
-            retrace_weights = (
-                    torch.sum(target_policy_logprob, dim=-1) - torch.sum(behaviour_policy_logprob, dim=-1)).clamp(max=0)
-        else:
-            retrace_weights = (target_policy_logprob - behaviour_policy_logprob).clamp(max=0)
-
-        assert not torch.isnan(retrace_weights).any(), "Error, a least one NaN value found in retrace weights."
-        return torch.pow(torch.exp(retrace_weights), 1 / num_actions)
+        assert not torch.isnan(log_retrace_weights).any(), "Error, a least one NaN value found in retrace weights."
+        return log_retrace_weights.exp()
 
 
 class ActorLoss(torch.nn.Module):
@@ -130,7 +123,7 @@ class ActorLoss(torch.nn.Module):
         Returns:
             Scalar actor loss value
         """
-        return - (Q.unsqueeze(-1) - self.alpha * action_log_prob).mean()
+        return - (Q - self.alpha * action_log_prob).mean()
 
     @staticmethod
     def kl_divergence(old_mean, old_std, mean, std):
