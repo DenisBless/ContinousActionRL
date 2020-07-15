@@ -51,30 +51,27 @@ class Retrace(torch.nn.Module):
 
         T = Q.shape[0]  # total number of time steps in the trajectory
 
-        Q_t = Q[:-1]
+        # Q_t = Q[:-1]
 
         with torch.no_grad():
             # We don't want gradients from computing Q_ret, since:
             # ∇φ (Q - Q_ret)^2 ∝ (Q - Q_ret) * ∇φ Q
-            r_t = rewards[:-1]
-            target_Q_next_t = target_Q[1:]
-            expected_Q_next_t = expected_target_Q[1:]
 
-            c_next_t = self.calc_retrace_weights(target_policy_probs, behaviour_policy_probs)[1:]
+            c_ret = self.calc_retrace_weights(target_policy_probs, behaviour_policy_probs)#[1:]
 
             if logger is not None:
-                logger.add_histogram(tag="retrace/ratio", values=c_next_t)
+                logger.add_histogram(tag="retrace/ratio", values=c_ret)
                 logger.add_histogram(tag="retrace/behaviour", values=behaviour_policy_probs)
                 logger.add_histogram(tag="retrace/target", values=target_policy_probs)
 
-            Q_ret = torch.zeros_like(Q_t, device=self.device, dtype=torch.float)  # (B,T)
-            Q_ret[-1] = target_Q_next_t[-1]
+            Q_ret = torch.zeros_like(Q, device=self.device, dtype=torch.float)  # (B,T)
+            Q_ret[-1] = target_Q[-1]
 
-            for t in reversed(range(1, T - 1)):
-                Q_ret[t - 1] = r_t[t] + gamma * (expected_Q_next_t[t] - c_next_t[t] * target_Q_next_t[t]) \
-                               + gamma * c_next_t[t] * Q_ret[t]
+            for t in reversed(range(1, T)):
+                Q_ret[t - 1] = rewards[t - 1] + gamma * (expected_target_Q[t] - c_ret[t] * target_Q[t]) \
+                               + gamma * c_ret[t] * Q_ret[t]
 
-        return F.mse_loss(Q_t, Q_ret)
+        return F.mse_loss(Q, Q_ret)
 
     @staticmethod
     def calc_retrace_weights(target_policy_logprob, behaviour_policy_logprob):
