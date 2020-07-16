@@ -14,6 +14,7 @@ class Agent:
     The agent represents one worker which repeatedly samples trajectories from the environment, sends gradients to the
     shared parameter server and evaluates its performance.
     """
+
     def __init__(self,
                  param_server,
                  shared_replay_buffer,
@@ -26,6 +27,7 @@ class Agent:
 
         self.param_server = param_server
         self.shared_replay_buffer = shared_replay_buffer
+        # self.env = gym.make("Swimmer-v2")
         self.env = gym.make("Pendulum-v0")
         # self.env = gym.make("HalfCheetah-v2")
         self.num_actions = self.env.action_space.shape[0]
@@ -39,8 +41,8 @@ class Agent:
         self.target_critic = copy.deepcopy(self.critic).to(self.device)
         self.target_critic.freeze_net()
 
-        self.actor_loss = ActorLoss()
-        self.critic_loss = Retrace()
+        self.actor_loss = ActorLoss(alpha=parser_args.entropy_reg)
+        self.critic_loss = Retrace(num_actions=self.num_actions)
 
         self.num_trajectories = parser_args.num_trajectories
         self.update_targnets_every = parser_args.update_targnets_every
@@ -121,14 +123,21 @@ class Agent:
         """
 
         for i in range(self.learning_steps):
+
+            # if i > 0:
+            #     print("before")
+            #     print("Actor", list(self.actor.parameters())[-1].data)
+            #     print("Actor.grad", list(self.actor.parameters())[-1].grad.detach().numpy())
+            #     print(self.actor.forward(torch.tensor(states[0], dtype=torch.float32)))
             self.actor.copy_params(self.param_server.shared_actor)
             self.critic.copy_params(self.param_server.shared_critic)
-            # print("Actor", list(self.actor.parameters())[-1].data)
-            # print("Actor", list(self.actor.parameters())[-1].grad)
+            # if i > 0:
+            #     print("after")
+            #     print("Actor", list(self.actor.parameters())[-1].data)
+            #     print("Actor.grad", list(self.actor.parameters())[-1].grad.detach().numpy())
+            # print(self.actor.forward(torch.tensor(states[0], dtype=torch.float32)))
             # print("Critic", list(self.critic.parameters())[-1].item())
             # print("Critic", list(self.critic.parameters())[-1].grad)
-            self.critic.reset_grads()
-            self.actor.reset_grads()
 
             # Update the target networks
             if i % self.update_targnets_every == 0:
@@ -168,7 +177,7 @@ class Agent:
             self.actor.eval()
             self.critic.train()
 
-            critic_loss = self.critic_loss.forward(Q=Q.squeeze(-1),
+            critic_loss = self.critic_loss.forward(Q=Q,
                                                    expected_target_Q=expected_target_Q,
                                                    target_Q=target_Q,
                                                    rewards=rewards,
@@ -185,15 +194,21 @@ class Agent:
                                                  action_log_prob=current_action_log_prob.squeeze(-1))
             actor_loss.backward()
 
+            # Send the gradients to the parameter server
             self.param_server.receive_gradients(actor=self.actor, critic=self.critic)
+
+            # Reset the gradients
+            self.critic.zero_grad()
+            self.actor.zero_grad()
 
             # Keep track of different values
             if self.logging and i % self.log_every == 0:
                 self.logger.add_scalar(scalar_value=actor_loss.item(), tag="Loss/Actor_loss")
                 self.logger.add_scalar(scalar_value=critic_loss.item(), tag="Loss/Critic_loss")
-                self.logger.add_scalar(scalar_value=current_log_std.mean(), tag="Statistics/Action_std")
+                self.logger.add_scalar(scalar_value=current_log_std.exp().mean(), tag="Statistics/Action_std")
 
                 self.logger.add_histogram(values=current_mean, tag="Statistics/Action_mean")
+                # print(current_mean[:10])
                 self.logger.add_histogram(values=current_actions, tag="Statistics/Action")
 
         self.actor.copy_params(self.param_server.shared_actor)

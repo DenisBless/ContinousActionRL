@@ -3,7 +3,8 @@ import torch.nn.functional as F
 
 
 class Retrace(torch.nn.Module):
-    def __init__(self):
+    def __init__(self, num_actions):
+        self.num_actions = num_actions
         super(Retrace, self).__init__()
         self.device = "cuda:0" if torch.cuda.is_available() else "cpu"
 
@@ -51,13 +52,11 @@ class Retrace(torch.nn.Module):
 
         T = Q.shape[0]  # total number of time steps in the trajectory
 
-        # Q_t = Q[:-1]
-
         with torch.no_grad():
             # We don't want gradients from computing Q_ret, since:
             # ∇φ (Q - Q_ret)^2 ∝ (Q - Q_ret) * ∇φ Q
 
-            c_ret = self.calc_retrace_weights(target_policy_probs, behaviour_policy_probs)#[1:]
+            c_ret = self.calc_retrace_weights(target_policy_probs, behaviour_policy_probs)  # [1:]
 
             if logger is not None:
                 logger.add_histogram(tag="retrace/ratio", values=c_ret)
@@ -73,8 +72,7 @@ class Retrace(torch.nn.Module):
 
         return F.mse_loss(Q, Q_ret)
 
-    @staticmethod
-    def calc_retrace_weights(target_policy_logprob, behaviour_policy_logprob):
+    def calc_retrace_weights(self, target_policy_logprob, behaviour_policy_logprob):
         """
         Calculates the retrace weights (truncated importance weights) c according to:
         c_t = min(1, π_target(a_t|s_t) / b(a_t|s_t)) where:
@@ -95,7 +93,7 @@ class Retrace(torch.nn.Module):
         log_retrace_weights = (target_policy_logprob - behaviour_policy_logprob).clamp(max=0)
 
         assert not torch.isnan(log_retrace_weights).any(), "Error, a least one NaN value found in retrace weights."
-        return log_retrace_weights.exp()
+        return log_retrace_weights.exp().pow(1 / self.num_actions)
 
 
 class ActorLoss(torch.nn.Module):

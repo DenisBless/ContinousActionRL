@@ -15,7 +15,8 @@
 #  position of the robot
 # • Todo: Try out increasing dt such that sampling an episode requires less time
 # • Todo: Initialize each worker with a different seed
-
+# • Todo: Why does 'render' not work with argparser
+# • Todo: Include
 
 """Ideas"""
 # • Todo: Try out prioritized experience replay

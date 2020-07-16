@@ -34,7 +34,9 @@ class ParameterServer:
         self.shared_critic.share_memory()
 
         self.actor_optimizer = SharedAdam(self.shared_actor.parameters(), actor_lr)
+        # self.actor_optimizer = torch.optim.SGD(self.shared_actor.parameters(), actor_lr)
         self.critic_optimizer = SharedAdam(self.shared_critic.parameters(), critic_lr)
+        # self.critic_optimizer = torch.optim.SGD(self.shared_critic.parameters(), critic_lr)
 
         self.global_gradient_norm = arg_parser.global_gradient_norm
 
@@ -86,9 +88,15 @@ class ParameterServer:
         Returns:
             No return value
         """
+        # print("before")
+        # self.print_grad_norm(self.shared_critic)
+        # self.print_grad_norm(self.shared_actor)
         if self.global_gradient_norm is not None:
             torch.nn.utils.clip_grad_norm_(self.shared_actor.parameters(), self.global_gradient_norm)
             torch.nn.utils.clip_grad_norm_(self.shared_critic.parameters(), self.global_gradient_norm)
+        # print("after")
+        # self.print_grad_norm(self.shared_critic)
+        # self.print_grad_norm(self.shared_actor)
 
         self.actor_optimizer.step()
         self.critic_optimizer.step()

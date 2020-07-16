@@ -64,4 +64,9 @@ class SharedAdam(torch.optim.Adam):
 
                 p.data.addcdiv_(-step_size, exp_avg, denom)
 
+                # TODO: Why is the param not shared anymore?
+                # assert state['step'].is_shared()
+                # assert state['exp_avg'].is_shared()
+                # assert state['exp_avg_sq'].is_shared()
+
         return loss

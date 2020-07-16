@@ -32,10 +32,6 @@ class Base(torch.nn.Module):
         for params in self.parameters():
             params.requires_grad = False
 
-    def reset_grads(self) -> None:
-        for param in self.parameters():
-            param.grad = torch.zeros_like(param.data, dtype=torch.float32)
-
     @staticmethod
     def init_weights(module: torch.nn.Module, gain: float = 1) -> None:
         if type(module) == torch.nn.Linear:
@@ -83,23 +79,17 @@ class Actor(Base):
         action = torch.tanh(normal_action)
         normal_log_prob = dist.log_prob(normal_action)
         log_prob = torch.sum(normal_log_prob, dim=-1) - torch.sum(torch.log((1 - action.pow(2) + self.eps)), dim=-1)
-        # return 2 * action, log_prob
-        return action, log_prob
+        return 2 * action, log_prob  # todo change to normalization
+        # return action, log_prob
 
     def get_log_prob(self, actions: torch.Tensor, mean: torch.Tensor, log_std: torch.Tensor,
                      normal_actions: torch.Tensor = None) -> torch.Tensor:
-        # actions /= 2  # todo use normalize instead
+        actions = actions / 2  # todo use normalize instead
         if normal_actions is None:
             normal_actions = self.inverseTanh(actions)
 
         normal_log_probs = self.normal_dist(mean, log_std).log_prob(normal_actions)
-        assert normal_log_probs.dim() > 1 and actions.dim() > 1
         log_probs = torch.sum(normal_log_probs, dim=-1) - torch.sum(torch.log(1 - actions.pow(2) + self.eps), dim=-1)
-        # print("LOG_MU  max: ", torch.max(normal_log_probs), "min: ", torch.min(normal_log_probs))
-        # print("TANH  max: ", torch.max(torch.log(1 - actions.pow(2) + self.eps)), "min: ", torch.min(torch.log(1 -
-        #                                                                                                        actions.pow(2) + self.eps)))
-        # if torch.min(torch.log(1 - actions.pow(2) + self.eps)) < -15:
-        #     print()
         return log_probs
 
     @staticmethod
@@ -138,6 +128,5 @@ class Critic(Base):
         self.init_weights(self.model)
 
     def forward(self, action, obs):
-        # action /= 2 # todo remove /2 by normalize_action()
-        x = torch.cat([action, obs], dim=-1)
+        x = torch.cat([action / 2, obs], dim=-1)  # todo remove /2 by normalize_action()
         return self.model(x)

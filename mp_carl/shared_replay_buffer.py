@@ -27,19 +27,20 @@ class SharedReplayBuffer(object):
 
     def push(self, states, actions, rewards, log_probs) -> None:
         with self.lock:
-            self.position += 1
             assert self.position.is_shared()
             assert self.state_memory.is_shared()
-
-            if self.position > self.capacity - 1:
-                self.full += 1
-                # Reset to 0. Ugly but otherwise not working because position will not be in shared mem if new assigned.
-                self.position -= self.position
 
             self.state_memory[self.position] = states
             self.action_memory[self.position] = actions
             self.reward_memory[self.position] = rewards
             self.log_prob_memory[self.position] = log_probs
+
+            self.position += 1
+
+            if self.position >= self.capacity:
+                self.full += 1
+                # Reset to 0. Ugly but otherwise not working because position will not be in shared mem if new assigned.
+                self.position -= self.position
 
     def sample(self):
         with self.lock:

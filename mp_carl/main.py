@@ -59,8 +59,10 @@ parser.add_argument('--control_timesteps', type=int, default=100,
                     help='Number of steps in the simulation between before the next action is executed.')
 parser.add_argument('--action_smoothing', type=bool, default=True,
                     help='Uses number <control_timsteps> to smooth between two action from the agent.')
+
 parser.add_argument('--render', type=bool, default=False,
                     help='If true, the environment is rendered.')
+
 parser.add_argument('--log_interval', type=int, default=10,
                     help='Interval of the logger writing data to the tensorboard.')
 
@@ -73,17 +75,25 @@ LOG_INTERVAL = 10
 # Pendulum
 NUM_ACTIONS = 1
 NUM_OBSERVATIONS = 3
-EPISODE_LENGTH = 200
 ACTION_SPACE = Box(low=np.array([-2.]),
                    high=np.array([2.]))
 OBS_SPACE = Box(low=np.array([-1., -1., -8.]),
                 high=np.array([1., 1., 8.]))
+EPISODE_LENGTH = 200
 
 # HalfCheetah
 # NUM_ACTIONS = 6
 # NUM_OBSERVATIONS = 17
 # ACTION_SPACE = Box(low=np.array([-1., -1., -1., -1., -1., -1.]),
 #                    high=np.array([1., 1., 1., 1., 1., 1.]))
+# OBS_SPACE = None  # observation space is unbounded
+# EPISODE_LENGTH = 1000
+
+# Swimmer
+# NUM_ACTIONS = 2
+# NUM_OBSERVATIONS = 8
+# ACTION_SPACE = Box(low=np.array([-1., -1.]),
+#                    high=np.array([1., 1.]))
 # OBS_SPACE = None  # observation space is unbounded
 # EPISODE_LENGTH = 1000
 
