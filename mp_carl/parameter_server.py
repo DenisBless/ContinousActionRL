@@ -1,6 +1,7 @@
 from mp_carl.actor_critic_models import Actor, Critic
 from mp_carl.optimizer import SharedAdam
 import torch
+from torch.multiprocessing import current_process
 
 
 class ParameterServer:
@@ -22,13 +23,15 @@ class ParameterServer:
 
         device = "cuda:0" if torch.cuda.is_available() else "cpu"
 
+        self.delivery = torch.zeros(arg_parser.num_worker)
+        self.delivery.share_memory_()
+
         self.G = G  # number of gradients before updating networks
         self.N = torch.tensor(0)  # current number of gradients
         self.N.share_memory_()
         self.lock = lock  # enter monitor to prevent race condition
 
-        self.shared_actor = Actor(num_actions=num_actions, num_obs=num_obs,
-                                  ).to(device)
+        self.shared_actor = Actor(num_actions=num_actions, num_obs=num_obs).to(device)
         self.shared_actor.share_memory()
 
         self.shared_critic = Critic(num_actions=num_actions, num_obs=num_obs).to(device)
@@ -56,9 +59,12 @@ class ParameterServer:
             No return value
         """
         with self.lock:
+            print(self.delivery)
             self.add_gradients(source_actor=actor, source_critic=critic)
+            self.delivery[current_process()._identity[0] - 1] += 1
             self.N += 1
             assert self.N.is_shared()  # todo remove when everything is working
+            assert self.delivery.is_shared()
             if self.N >= self.G:
                 self.update_params()
                 # Reset to 0. Ugly but otherwise not working because position will not be in shared mem if new assigned.

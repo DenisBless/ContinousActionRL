@@ -2,6 +2,7 @@ import copy
 
 from torch.utils.tensorboard import SummaryWriter
 
+from torch.multiprocessing import current_process
 from mp_carl.loss_fn import Retrace, ActorLoss
 from mp_carl.actor_critic_models import Actor, Critic
 import torch
@@ -22,10 +23,16 @@ class Agent:
 
         self.device = "cuda:0" if torch.cuda.is_available() else "cpu"
 
-        self.logging = parser_args.logging
-        self.logger = SummaryWriter()
 
         self.param_server = param_server
+
+        self.pid = current_process()._identity[0]
+
+        self.logging = parser_args.logging
+        self.logger = None
+        if self.pid == 1 and self.logging:  # only create one logger
+            self.logger = SummaryWriter()
+
         self.shared_replay_buffer = shared_replay_buffer
         self.env = gym.make("Swimmer-v2")
         # self.env = gym.make("Pendulum-v0")
@@ -51,6 +58,8 @@ class Agent:
         self.num_runs = parser_args.num_runs
         self.render = parser_args.render
         self.log_every = parser_args.log_interval
+
+        self.num_grads = parser_args.num_grads
 
     def run(self) -> None:
         """
@@ -110,7 +119,7 @@ class Agent:
             rewards = torch.stack(rewards).to(self.device)
             action_log_probs = torch.stack(action_log_probs).to(self.device)
 
-            if self.logger is not None and i % self.log_every == 0:
+            if self.pid == 1 and self.logger is not None and i % self.log_every == 0:
                 self.logger.add_scalar(scalar_value=rewards.mean(), tag="Reward/train")
 
             self.shared_replay_buffer.push(states, actions.detach(), rewards, action_log_probs.detach())
@@ -209,7 +218,7 @@ class Agent:
             self.actor.zero_grad()
 
             # Keep track of different values
-            if self.logging and i % self.log_every == 0:
+            if self.pid == 1 and self.logging and i % self.log_every == 0:
                 self.logger.add_scalar(scalar_value=actor_loss.item(), tag="Loss/Actor_loss")
                 self.logger.add_scalar(scalar_value=critic_loss.item(), tag="Loss/Critic_loss")
                 self.logger.add_scalar(scalar_value=current_log_std.exp().mean(), tag="Statistics/Action_std")
@@ -217,12 +226,12 @@ class Agent:
                 self.logger.add_scalar(scalar_value=list(self.critic.parameters())[-1].item(), tag="Critic/param")
                 self.logger.add_scalar(scalar_value=list(self.critic.parameters())[-1].grad, tag="Critic/grad")
 
-                self.logger.add_scalar(scalar_value=Q[0], tag="Q_/Q0")
-                self.logger.add_scalar(scalar_value=Q[-1], tag="Q_/QT")
-                self.logger.add_scalar(scalar_value=target_Q[0], tag="targetQ/targetQ0")
-                self.logger.add_scalar(scalar_value=target_Q[-1], tag="targetQ/targetQT")
-                self.logger.add_scalar(scalar_value=expected_target_Q[0], tag="V/V0")
-                self.logger.add_scalar(scalar_value=expected_target_Q[-1], tag="V/VT")
+                # self.logger.add_scalar(scalar_value=Q[0], tag="Q_/Q0")
+                # self.logger.add_scalar(scalar_value=Q[-1], tag="Q_/QT")
+                # self.logger.add_scalar(scalar_value=target_Q[0], tag="targetQ/targetQ0")
+                # self.logger.add_scalar(scalar_value=target_Q[-1], tag="targetQ/targetQT")
+                # self.logger.add_scalar(scalar_value=expected_target_Q[0], tag="V/V0")
+                # self.logger.add_scalar(scalar_value=expected_target_Q[-1], tag="V/VT")
 
                 self.logger.add_histogram(values=current_mean, tag="Statistics/Action_mean")
                 self.logger.add_histogram(values=rewards.sum(dim=-1), tag="Cumm Reward/Action_mean")
@@ -261,7 +270,7 @@ class Agent:
                 if done:
                     obs = torch.tensor(self.env.reset(), dtype=torch.float).to(self.device)
                     print("Mean reward: ", np.mean(rewards))
-                    if self.logger is not None:
+                    if self.pid == 1 and self.logger is not None:
                         self.logger.add_scalar(scalar_value=np.mean(rewards), tag="Reward/test")
 
         self.actor.train()  # Back to train mode

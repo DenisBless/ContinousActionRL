@@ -1,5 +1,6 @@
 import torch
 import torch.nn.functional as F
+from torch.multiprocessing import current_process
 
 
 class Retrace(torch.nn.Module):
@@ -58,7 +59,7 @@ class Retrace(torch.nn.Module):
 
             c_ret = self.calc_retrace_weights(target_policy_probs, behaviour_policy_probs)  # [1:]
 
-            if logger is not None:
+            if current_process()._identity[0] == 1 and logger is not None:
                 logger.add_histogram(tag="retrace/ratio", values=c_ret)
                 logger.add_histogram(tag="retrace/behaviour", values=behaviour_policy_probs)
                 logger.add_histogram(tag="retrace/target", values=target_policy_probs)
