@@ -27,13 +27,14 @@ class Agent:
 
         self.param_server = param_server
         self.shared_replay_buffer = shared_replay_buffer
-        # self.env = gym.make("Swimmer-v2")
-        self.env = gym.make("Pendulum-v0")
+        self.env = gym.make("Swimmer-v2")
+        # self.env = gym.make("Pendulum-v0")
         # self.env = gym.make("HalfCheetah-v2")
         self.num_actions = self.env.action_space.shape[0]
         self.num_obs = self.env.observation_space.shape[0]
         self.actor = Actor(num_actions=self.num_actions,
-                           num_obs=self.num_obs).to(self.device)
+                           num_obs=self.num_obs,
+                           log_std_init=np.log(parser_args.init_std)).to(self.device)
         self.critic = Critic(num_actions=self.num_actions, num_obs=self.num_obs).to(self.device)
 
         self.target_actor = copy.deepcopy(self.actor).to(self.device)
@@ -60,7 +61,10 @@ class Agent:
             No return value
         """
         for i in range(self.num_runs):
+            import time
+            t = time.time()
             self.sample()
+            print(time.time() - t)
             self.learn()
             self.evaluate()
 
@@ -159,8 +163,13 @@ class Agent:
             # Compute 𝔼_π_target [Q(s_t,•)] with a ~ π_target(•|s_t), log(π_target(a|s)) with 1 sample
             mean, log_std = self.target_actor.forward(states)
             mean, log_std = mean.to(self.device), log_std.to(self.device)
-            action_sample, _ = self.target_actor.action_sample(mean, log_std)
-            expected_target_Q = self.target_critic.forward(action_sample, states)
+            for j in range(5):  # num samples for computing the expectation
+                if j == 0:
+                    action_sample, _ = self.target_actor.action_sample(mean, log_std)
+                    expected_target_Q = self.target_critic.forward(action_sample, states)
+                else:
+                    action_sample, _ = self.target_actor.action_sample(mean, log_std)
+                    expected_target_Q += self.target_critic.forward(action_sample, states)
 
             # log(π_target(a_t | s_t))
             target_action_log_prob = self.target_actor.get_log_prob(actions, mean, log_std)
@@ -190,8 +199,8 @@ class Agent:
             self.actor.train()
             self.critic.eval()
 
-            actor_loss = self.actor_loss.forward(Q=current_Q.squeeze(-1),
-                                                 action_log_prob=current_action_log_prob.squeeze(-1))
+            actor_loss = self.actor_loss.forward(Q=current_Q,
+                                                 action_log_prob=current_action_log_prob.unsqueeze(-1))
             actor_loss.backward()
 
             # Send the gradients to the parameter server

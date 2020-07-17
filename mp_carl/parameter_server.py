@@ -1,6 +1,7 @@
 from mp_carl.actor_critic_models import Actor, Critic
 from mp_carl.optimizer import SharedAdam
 import torch
+import numpy as np
 
 
 class ParameterServer:
@@ -27,16 +28,15 @@ class ParameterServer:
         self.N.share_memory_()
         self.lock = lock  # enter monitor to prevent race condition
 
-        self.shared_actor = Actor(num_actions=num_actions, num_obs=num_obs).to(device)
+        self.shared_actor = Actor(num_actions=num_actions, num_obs=num_obs,
+                                  ).to(device)
         self.shared_actor.share_memory()
 
         self.shared_critic = Critic(num_actions=num_actions, num_obs=num_obs).to(device)
         self.shared_critic.share_memory()
 
         self.actor_optimizer = SharedAdam(self.shared_actor.parameters(), actor_lr)
-        # self.actor_optimizer = torch.optim.SGD(self.shared_actor.parameters(), actor_lr)
         self.critic_optimizer = SharedAdam(self.shared_critic.parameters(), critic_lr)
-        # self.critic_optimizer = torch.optim.SGD(self.shared_critic.parameters(), critic_lr)
 
         self.global_gradient_norm = arg_parser.global_gradient_norm
 

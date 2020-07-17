@@ -27,6 +27,9 @@ parser.add_argument('--actor_lr', type=float, default=2e-4,
                     help='Learning rate for the actor network.')
 parser.add_argument('--critic_lr', type=float, default=2e-4,
                     help='Learning rate for the critic network.')
+parser.add_argument('--init_std', type=float, default=0,
+                    help='Initial standard deviation of the actor.')
+
 parser.add_argument('--global_gradient_norm', type=float, default=0.5,
                     help='Enables gradient clipping with a specified global parameter L2 norm')
 parser.add_argument('--num_expectation_samples', type=int, default=1,
@@ -73,13 +76,13 @@ SAVE_MODEL_EVERY = 10
 LOG_INTERVAL = 10
 
 # Pendulum
-NUM_ACTIONS = 1
-NUM_OBSERVATIONS = 3
-ACTION_SPACE = Box(low=np.array([-2.]),
-                   high=np.array([2.]))
-OBS_SPACE = Box(low=np.array([-1., -1., -8.]),
-                high=np.array([1., 1., 8.]))
-EPISODE_LENGTH = 200
+# NUM_ACTIONS = 1
+# NUM_OBSERVATIONS = 3
+# ACTION_SPACE = Box(low=np.array([-2.]),
+#                    high=np.array([2.]))
+# OBS_SPACE = Box(low=np.array([-1., -1., -8.]),
+#                 high=np.array([1., 1., 8.]))
+# EPISODE_LENGTH = 200
 
 # HalfCheetah
 # NUM_ACTIONS = 6
@@ -90,12 +93,12 @@ EPISODE_LENGTH = 200
 # EPISODE_LENGTH = 1000
 
 # Swimmer
-# NUM_ACTIONS = 2
-# NUM_OBSERVATIONS = 8
-# ACTION_SPACE = Box(low=np.array([-1., -1.]),
-#                    high=np.array([1., 1.]))
-# OBS_SPACE = None  # observation space is unbounded
-# EPISODE_LENGTH = 1000
+NUM_ACTIONS = 2
+NUM_OBSERVATIONS = 8
+ACTION_SPACE = Box(low=np.array([-1., -1.]),
+                   high=np.array([1., 1.]))
+OBS_SPACE = None  # observation space is unbounded
+EPISODE_LENGTH = 1000
 
 
 def work(param_server, replay_buffer, parser_args):

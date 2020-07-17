@@ -67,8 +67,12 @@ class Retrace(torch.nn.Module):
             Q_ret[-1] = target_Q[-1]
 
             for t in reversed(range(1, T)):
-                Q_ret[t - 1] = rewards[t - 1] + gamma * (expected_target_Q[t] - c_ret[t] * target_Q[t]) \
-                               + gamma * c_ret[t] * Q_ret[t]
+
+                Q_ret[t - 1] = rewards[t - 1] + gamma * c_ret[t] * (Q_ret[t] - target_Q[t]) + \
+                               gamma * expected_target_Q[t]
+
+
+
 
         return F.mse_loss(Q, Q_ret)
 
@@ -118,6 +122,7 @@ class ActorLoss(torch.nn.Module):
         Returns:
             Scalar actor loss value
         """
+        assert Q.dim() == action_log_prob.dim()
         return - (Q - self.alpha * action_log_prob).mean()
 
     @staticmethod

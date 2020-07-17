@@ -6,9 +6,11 @@
 # • Todo: Try out orthogonal weight init and bias zero -> DONE
 # • Todo: Implement torch.rsample. Enables reparameterization trick -> DONE
 # • Todo: Make standard deviation state independent -> Done
-# • Todo: Try to out entropy regularization
+# • Todo: Try to out entropy regularization -> Done
 # • Todo: Try out reward clipping (at least for pendulum)
 # • Todo: Implement action and observation normalization
+# • Todo: Check the difference between the value function approx. with one sample or many samples
+# • Todo:
 
 # Environment based
 # • Todo: Use mocap pos as endeffector pos in order to calculate the reward instead of using the endeffector
@@ -16,7 +18,6 @@
 # • Todo: Try out increasing dt such that sampling an episode requires less time
 # • Todo: Initialize each worker with a different seed
 # • Todo: Why does 'render' not work with argparser
-# • Todo: Include
 
 """Ideas"""
 # • Todo: Try out prioritized experience replay
