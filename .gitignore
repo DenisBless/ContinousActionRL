@@ -9,4 +9,4 @@ continous_action_RL/models_pendulum_V0
 !/continous_action_RL/models/
 !/todos.py
 /models/
-*.pyc
+*.pyc t
