@@ -25,17 +25,43 @@ class Base(torch.nn.Module):
         self.num_obs = num_obs
 
     def copy_params(self, source_network: torch.nn.Module) -> None:
+        """
+        Copy the parameters from the source network to the current network.
+
+        Args:
+            source_network: Network to copy parameters from
+
+        Returns:
+            No return value
+        """
         for param, source_param in zip(self.parameters(), source_network.parameters()):
             param.data.copy_(source_param.data)
 
     def freeze_net(self) -> None:
+        """
+        Deactivate gradient
+            Computation for the network
+
+        Returns:
+            No return value
+        """
         for params in self.parameters():
             params.requires_grad = False
 
     @staticmethod
-    def init_weights(module: torch.nn.Module, gain: float = 1) -> None:
+    def init_weights(module: torch.nn.Module) -> None:
+        """
+        Orthogonal initialization of the weights. Sets initial bias to zero.
+
+        Args:
+            module: Network to initialize weights.
+
+        Returns:
+            No return value
+
+        """
         if type(module) == torch.nn.Linear:
-            torch.nn.init.orthogonal_(module.weight, gain=gain)
+            torch.nn.init.orthogonal_(module.weight)
             module.bias.data.fill_(0.0)
 
 
@@ -74,6 +100,21 @@ class Actor(Base):
         return mean, self.log_std.clamp(min=-3)  # Lower bound on the variance
 
     def action_sample(self, mean: torch.Tensor, log_std: torch.Tensor) -> Tuple[torch.Tensor, torch.Tensor]:
+        """
+        Creates an action sample from the policy network. The output of the network is assumed to be gaussian
+        distributed. Let u be a random variable with distribution p(u|s). Since we want our actions to be bound in
+        [-1, 1] we apply the tanh function to u, that is a = tanh(u). By change of variable, we have:
+
+        π(a|s) = p(u|s) |det(da/du)| ^-1. Since da/du = diag(1 - tanh^2(u)). We obtain the log likelihood as
+        log π(a|s) = log p(u|s) - ∑_i 1 - tanh^2(u_i)
+
+        Args:
+            mean: μ(s)
+            log_std: log σ(s) where u ~ N(•|μ(s), σ(s))
+
+        Returns:
+            action sample a = tanh(u) and log prob log π(a|s)
+        """
         dist = self.normal_dist(mean, log_std)
         normal_action = dist.rsample()  # rsample() employs reparameterization trick
         action = torch.tanh(normal_action)
@@ -84,6 +125,22 @@ class Actor(Base):
 
     def get_log_prob(self, actions: torch.Tensor, mean: torch.Tensor, log_std: torch.Tensor,
                      normal_actions: torch.Tensor = None) -> torch.Tensor:
+        """
+        Returns the log prob of a given action a = tanh(u) and u ~ N(•|μ(s), σ(s)) according to
+
+        log π(a|s) = log p(u|s) - ∑_i 1 - tanh^2(u_i).
+
+        If u is not given we can reconstruct it with u = tanh^-1(a), since tanh is bijective.
+
+        Args:
+            actions: a = tanh(u)
+            mean: μ(s)
+            log_std: log σ(s)
+            normal_actions: u ~ N(•|μ(s), σ(s))
+
+        Returns:
+            log π(a|s)
+        """
         # actions = actions / 2  # todo use normalize instead
         if normal_actions is None:
             normal_actions = self.inverseTanh(actions)
@@ -94,9 +151,27 @@ class Actor(Base):
 
     @staticmethod
     def normal_dist(mean: torch.Tensor, log_std: torch.Tensor) -> Normal:
+        """
+        Returns a normal distribution.
+
+        Args:
+            mean: μ(s)
+            log_std: log σ(s) where u ~ N(•|μ(s), σ(s))
+
+        Returns:
+            N(u|μ(s), σ(s))
+        """
         return Normal(loc=mean, scale=torch.ones_like(mean) * log_std.exp())
 
     def inverseTanh(self, action: torch.Tensor) -> torch.Tensor:
+        """
+        Computes the inverse of the tanh for the given action
+        Args:
+            action: a = tanh(u)
+
+        Returns:
+            u = tanh^-1(a)
+        """
         eps = torch.finfo(action.dtype).eps  # The smallest representable number such that 1.0 + eps != 1.0
 
         return self.atanh(action.clamp(min=-1. + eps, max=1. - eps))
