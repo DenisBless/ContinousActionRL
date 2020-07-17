@@ -1,7 +1,6 @@
 from mp_carl.actor_critic_models import Actor, Critic
 from mp_carl.optimizer import SharedAdam
 import torch
-import numpy as np
 
 
 class ParameterServer:
@@ -36,7 +35,9 @@ class ParameterServer:
         self.shared_critic.share_memory()
 
         self.actor_optimizer = SharedAdam(self.shared_actor.parameters(), actor_lr)
+        self.actor_optimizer.share_memory()
         self.critic_optimizer = SharedAdam(self.shared_critic.parameters(), critic_lr)
+        self.critic_optimizer.share_memory()
 
         self.global_gradient_norm = arg_parser.global_gradient_norm
 
@@ -91,7 +92,7 @@ class ParameterServer:
         # print("before")
         # self.print_grad_norm(self.shared_critic)
         # self.print_grad_norm(self.shared_actor)
-        if self.global_gradient_norm is not None:
+        if self.global_gradient_norm != -1:
             torch.nn.utils.clip_grad_norm_(self.shared_actor.parameters(), self.global_gradient_norm)
             torch.nn.utils.clip_grad_norm_(self.shared_critic.parameters(), self.global_gradient_norm)
         # print("after")

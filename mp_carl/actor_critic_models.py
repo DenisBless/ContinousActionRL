@@ -147,6 +147,7 @@ class Actor(Base):
 
         normal_log_probs = self.normal_dist(mean, log_std).log_prob(normal_actions)
         log_probs = torch.sum(normal_log_probs, dim=-1) - torch.sum(torch.log(1 - actions.pow(2) + self.eps), dim=-1)
+        assert not torch.isnan(log_probs).any()
         return log_probs
 
     @staticmethod
@@ -173,8 +174,9 @@ class Actor(Base):
             u = tanh^-1(a)
         """
         eps = torch.finfo(action.dtype).eps  # The smallest representable number such that 1.0 + eps != 1.0
-
-        return self.atanh(action.clamp(min=-1. + eps, max=1. - eps))
+        atanh = self.atanh(action.clamp(min=-1. + eps, max=1. - eps))
+        assert not torch.isnan(atanh).any()
+        return atanh
 
     @staticmethod
     def atanh(action: torch.Tensor) -> torch.Tensor:

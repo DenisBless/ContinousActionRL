@@ -10,7 +10,7 @@
 # • Todo: Try out reward clipping (at least for pendulum)
 # • Todo: Implement action and observation normalization
 # • Todo: Check the difference between the value function approx. with one sample or many samples
-# • Todo:
+# • Todo: Load the run counter in shared memory and save the model after some time
 
 # Environment based
 # • Todo: Use mocap pos as endeffector pos in order to calculate the reward instead of using the endeffector

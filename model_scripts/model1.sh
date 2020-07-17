@@ -1,12 +1,12 @@
 python3 ../mp_carl/main.py \
---num_worker=6 \
---num_grads=12 \
---update_targnets_every=1000     \
---learning_steps=2000 \
---actor_lr=1e-4 \
---critic_lr=1e-4 \
+--num_worker=1 \
+--num_grads=1 \
+--update_targnets_every=20 \
+--learning_steps=3000 \
+--actor_lr=1e-3 \
+--critic_lr=1e-2 \
 --init_std=-0.2 \
---global_gradient_norm=0.5 \
+--global_gradient_norm=-1 \
 --entropy_reg=0 \
 --replay_buffer_size=10000 \
---num_trajectories=30  \
+--num_trajectories=20  \

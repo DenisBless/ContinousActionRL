@@ -17,7 +17,7 @@ parser.add_argument('--num_worker', type=int, default=1,
                     help='Number of workers training the agent in parallel.')
 parser.add_argument('--num_grads', type=int, default=1,
                     help='Number of gradients collected before updating the networks.')
-parser.add_argument('--update_targnets_every', type=int, default=200,
+parser.add_argument('--update_targnets_every', type=int, default=10,
                     help='Number of learning steps before the target networks are updated.')
 parser.add_argument('--learning_steps', type=int, default=2000,
                     help='Total number of learning timesteps before sampling trajectories.')

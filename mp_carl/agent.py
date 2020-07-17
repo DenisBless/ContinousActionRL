@@ -133,6 +133,8 @@ class Agent:
             #     print("Actor", list(self.actor.parameters())[-1].data)
             #     print("Actor.grad", list(self.actor.parameters())[-1].grad.detach().numpy())
             #     print(self.actor.forward(torch.tensor(states[0], dtype=torch.float32)))
+            # print("Critic", list(self.critic.parameters())[-1].item())
+
             self.actor.copy_params(self.param_server.shared_actor)
             self.critic.copy_params(self.param_server.shared_critic)
             # if i > 0:
@@ -163,13 +165,9 @@ class Agent:
             # Compute 𝔼_π_target [Q(s_t,•)] with a ~ π_target(•|s_t), log(π_target(a|s)) with 1 sample
             mean, log_std = self.target_actor.forward(states)
             mean, log_std = mean.to(self.device), log_std.to(self.device)
-            for j in range(5):  # num samples for computing the expectation
-                if j == 0:
-                    action_sample, _ = self.target_actor.action_sample(mean, log_std)
-                    expected_target_Q = self.target_critic.forward(action_sample, states)
-                else:
-                    action_sample, _ = self.target_actor.action_sample(mean, log_std)
-                    expected_target_Q += self.target_critic.forward(action_sample, states)
+
+            action_sample, _ = self.target_actor.action_sample(mean, log_std)
+            expected_target_Q = self.target_critic.forward(action_sample, states)
 
             # log(π_target(a_t | s_t))
             target_action_log_prob = self.target_actor.get_log_prob(actions, mean, log_std)
@@ -216,7 +214,18 @@ class Agent:
                 self.logger.add_scalar(scalar_value=critic_loss.item(), tag="Loss/Critic_loss")
                 self.logger.add_scalar(scalar_value=current_log_std.exp().mean(), tag="Statistics/Action_std")
 
+                self.logger.add_scalar(scalar_value=list(self.critic.parameters())[-1].item(), tag="Critic/param")
+                self.logger.add_scalar(scalar_value=list(self.critic.parameters())[-1].grad, tag="Critic/grad")
+
+                self.logger.add_scalar(scalar_value=Q[0], tag="Q_/Q0")
+                self.logger.add_scalar(scalar_value=Q[-1], tag="Q_/QT")
+                self.logger.add_scalar(scalar_value=target_Q[0], tag="targetQ/targetQ0")
+                self.logger.add_scalar(scalar_value=target_Q[-1], tag="targetQ/targetQT")
+                self.logger.add_scalar(scalar_value=expected_target_Q[0], tag="V/V0")
+                self.logger.add_scalar(scalar_value=expected_target_Q[-1], tag="V/VT")
+
                 self.logger.add_histogram(values=current_mean, tag="Statistics/Action_mean")
+                self.logger.add_histogram(values=rewards.sum(dim=-1), tag="Cumm Reward/Action_mean")
                 # print(current_mean[:10])
                 self.logger.add_histogram(values=current_actions, tag="Statistics/Action")
 
