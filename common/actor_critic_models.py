@@ -24,18 +24,6 @@ class Base(torch.nn.Module):
         self.num_actions = num_actions
         self.num_obs = num_obs
 
-    # def __eq__(self, other):
-    #     if isinstance(other, self.__class__):
-    #         for param, other_param in zip(self.parameters(), other.parameters()):
-    #             if param != param:
-    #                 return False
-    #         return True
-    #     else:
-    #         return False
-    #
-    # def __ne__(self, other):
-    #     return not self.__eq__(other)
-
     def copy_params(self, source_network: torch.nn.Module) -> None:
         """
         Copy the parameters from the source network to the current network.
@@ -71,6 +59,23 @@ class Base(torch.nn.Module):
             if not params.is_shared():
                 return False
         return True
+
+    @property
+    def param_norm(self) -> float:
+        p_norm = 0
+        for params in self.parameters():
+            p_norm += params.norm()
+        return p_norm
+
+    @property
+    def grad_norm(self) -> float:
+        g_norm = 0
+        for params in self.parameters():
+            g_norm += params.grad.norm()
+        return g_norm
+
+
+
 
     @staticmethod
     def init_weights(module: torch.nn.Module) -> None:

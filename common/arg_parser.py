@@ -15,7 +15,7 @@ class ArgParser(ArgumentParser):
                           help='Number of trajectories in a batch.')
         self.add_argument('--update_targnets_every', type=int, default=10,
                           help='Number of learning steps before the target networks are updated.')
-        self.add_argument('--learning_steps', type=int, default=2000,
+        self.add_argument('--learning_steps', type=int, default=200,
                           help='Total number of learning timesteps before sampling trajectories.')
         self.add_argument('--num_runs', type=int, default=5000,
                           help='Number of learning iterations.')
@@ -23,7 +23,7 @@ class ArgParser(ArgumentParser):
                           help='Learning rate for the actor network.')
         self.add_argument('--critic_lr', type=float, default=2e-4,
                           help='Learning rate for the critic network.')
-        self.add_argument('--init_std', type=float, default=0,
+        self.add_argument('--init_std', type=float, default=0.2,
                           help='Initial standard deviation of the actor.')
 
         self.add_argument('--global_gradient_norm', type=float, default=0.5,

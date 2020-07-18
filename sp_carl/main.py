@@ -1,8 +1,13 @@
 import os
+import pathlib
+import datetime
+
 import numpy as np
 from gym.spaces import Box
 import torch
 import time
+import os.path
+from os import path
 
 import torch.multiprocessing as mp
 from torch.utils.tensorboard import SummaryWriter
@@ -38,6 +43,11 @@ if __name__ == '__main__':
     os.environ['CUDA_VISIBLE_DEVICES'] = ""  # Disable CUDA
 
     device = CUDA if torch.cuda.is_available() else CPU
+
+    model_root_dir = str(pathlib.Path(__file__).resolve().parents[1]) + "/models/"
+    assert os.path.isdir(model_root_dir)
+    model_dir = model_root_dir + "/" + datetime.datetime.now().strftime("%H_%M__%d_%m")
+    os.mkdir(model_dir)
 
     lock = mp.Lock()
     logger = SummaryWriter()
@@ -110,3 +120,9 @@ if __name__ == '__main__':
         evaluator.eval()
 
         n += 1
+
+        # Saving the model parameters
+        if args.save_model_every == 0:
+            torch.save(actor.state_dict(), model_dir + "/actor_" + str(n))
+            torch.save(critic.state_dict(), model_dir + "/critic_" + str(n))
+

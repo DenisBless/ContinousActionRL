@@ -133,8 +133,8 @@ class ActorLoss(torch.nn.Module):
             Scalar actor loss value
         """
         assert Q.dim() == action_log_prob.dim()
-        # return - (Q - self.alpha * action_log_prob).mean()
-        return - Q.mean()
+        return (self.alpha * action_log_prob - Q).mean()
+        # return - Q.mean()
 
     @staticmethod
     def kl_divergence(old_mean, old_std, mean, std):

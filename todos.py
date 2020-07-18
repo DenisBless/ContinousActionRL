@@ -12,6 +12,7 @@
 # • Todo: Check the difference between the value function approx. with one sample or many samples
 # • Todo: Load the run counter in shared memory and save the model after some time
 # • Todo: Create include the "if training" statement in the new nets
+# • Todo: Put Critic grad step before actor (see SAC)
 
 # Environment based
 # • Todo: Use mocap pos as endeffector pos in order to calculate the reward instead of using the endeffector

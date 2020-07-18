@@ -26,7 +26,7 @@ class Evaluator:
             done = False
             while not done:
                 mean, log_std = self.actor.forward(obs)
-                action, _ = self.actor.action_sample(mean, log_std)
+                action, _ = self.actor.action_sample(mean, torch.ones_like(mean))
                 next_obs, reward, done, _ = self.env.step(action.detach().cpu())
                 next_obs = torch.tensor(next_obs, dtype=torch.float)
                 rewards.append(reward)

@@ -54,6 +54,8 @@ class Learner:
         Returns:
             No return value
         """
+        self.actor.train()
+        self.critic.train()
 
         for i in range(self.learning_steps):
 
@@ -91,17 +93,11 @@ class Learner:
             current_actions, current_action_log_prob = self.actor.action_sample(current_mean, current_log_std)
             current_actions.to(self.device)
 
-            # Q(a, s_t)
-            current_Q = self.critic.forward(current_actions, states)
-
-            # Critic update
-            self.actor.eval()
-            self.critic.train()
-
             # Reset the gradients
             self.critic.zero_grad()
             self.actor.zero_grad()
 
+            # Critic update
             critic_loss = self.critic_loss.forward(Q=Q,
                                                    expected_target_Q=expected_target_Q,
                                                    target_Q=target_Q,
@@ -111,25 +107,29 @@ class Learner:
                                                    logger=self.logger)
             critic_loss.backward(retain_graph=True)
 
+            self.critic_opt.step()
+
             # Actor update
-            self.actor.train()
-            self.critic.eval()
+            # Q(a, s_t)
+            current_Q = self.critic.forward(current_actions, states)
 
             actor_loss = self.actor_loss.forward(Q=current_Q,
                                                  action_log_prob=current_action_log_prob.unsqueeze(-1))
             actor_loss.backward()
 
             self.actor_opt.step()
-            self.critic_opt.step()
 
             # Keep track of different values
             if self.logging and i % self.log_every == 0:
                 self.logger.add_scalar(scalar_value=actor_loss.item(), tag="Loss/Actor_loss")
                 self.logger.add_scalar(scalar_value=critic_loss.item(), tag="Loss/Critic_loss")
-                self.logger.add_scalar(scalar_value=current_log_std.exp().mean(), tag="Statistics/Action_std")
+                self.logger.add_scalar(scalar_value=current_log_std.exp().mean(), tag="Statistics/Action_std_mean")
+                self.logger.add_scalar(scalar_value=current_log_std.exp().std(), tag="Statistics/Action_std_std")
 
-                self.logger.add_scalar(scalar_value=list(self.critic.parameters())[-1].item(), tag="Critic/param")
-                self.logger.add_scalar(scalar_value=list(self.critic.parameters())[-1].grad, tag="Critic/grad")
+                self.logger.add_scalar(scalar_value=self.critic.param_norm, tag="Critic/param norm")
+                self.logger.add_scalar(scalar_value=self.critic.grad_norm, tag="Critic/grad norm")
+                self.logger.add_scalar(scalar_value=self.actor.param_norm, tag="Actor/param norm")
+                self.logger.add_scalar(scalar_value=self.actor.grad_norm, tag="Actor/grad norm")
 
                 self.logger.add_histogram(values=current_mean, tag="Statistics/Action_mean")
                 self.logger.add_histogram(values=rewards.sum(dim=-1), tag="Cumm Reward/Action_mean")
