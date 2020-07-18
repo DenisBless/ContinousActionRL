@@ -2,7 +2,7 @@ import copy
 
 from torch.utils.tensorboard import SummaryWriter
 
-from torch.multiprocessing import current_process
+from torch.multiprocessing import current_process, Lock, Condition
 from mp_carl.loss_fn import Retrace, ActorLoss
 from mp_carl.actor_critic_models import Actor, Critic
 import torch
@@ -23,10 +23,12 @@ class Agent:
 
         self.device = "cuda:0" if torch.cuda.is_available() else "cpu"
 
-
         self.param_server = param_server
 
-        self.pid = current_process()._identity[0]
+        if parser_args.num_worker > 1:
+            self.pid = current_process()._identity[0]
+        else:
+            self.pid = 1
 
         self.logging = parser_args.logging
         self.logger = None
@@ -60,6 +62,8 @@ class Agent:
         self.log_every = parser_args.log_interval
 
         self.num_grads = parser_args.num_grads
+        self.grad_ctr = 0
+        self.cond = Condition()
 
     def run(self) -> None:
         """
@@ -134,6 +138,8 @@ class Agent:
         Returns:
             No return value
         """
+        self.actor.copy_params(self.param_server.shared_actor)
+        self.critic.copy_params(self.param_server.shared_critic)
 
         for i in range(self.learning_steps):
 
@@ -142,7 +148,7 @@ class Agent:
             #     print("Actor", list(self.actor.parameters())[-1].data)
             #     print("Actor.grad", list(self.actor.parameters())[-1].grad.detach().numpy())
             #     print(self.actor.forward(torch.tensor(states[0], dtype=torch.float32)))
-            # print("Critic", list(self.critic.parameters())[-1].item())
+            # print("Critic", list(self.target_critic.parameters())[-1].item())
 
             self.actor.copy_params(self.param_server.shared_actor)
             self.critic.copy_params(self.param_server.shared_critic)
@@ -217,6 +223,20 @@ class Agent:
             self.critic.zero_grad()
             self.actor.zero_grad()
 
+            self.grad_ctr += 1
+
+            # print(self.param_server.N)
+            #
+            # with self.cond:
+            #     if self.grad_ctr == 2:
+            #         self.cond.wait_for(lambda: self.param_server.N == self.param_server.G)
+            #
+            #         self.actor.copy_params(self.param_server.shared_actor)
+            #         self.critic.copy_params(self.param_server.shared_critic)
+            #
+            #         self.grad_ctr = 0
+
+
             # Keep track of different values
             if self.pid == 1 and self.logging and i % self.log_every == 0:
                 self.logger.add_scalar(scalar_value=actor_loss.item(), tag="Loss/Actor_loss")
@@ -275,12 +295,27 @@ class Agent:
 
         self.actor.train()  # Back to train mode
 
-    def update_targnets(self) -> None:
+    def update_targnets(self, smoothing_coefficient=1) -> None:
         """
-        Update the target actor and the target critic by copying the parameter from the updated networks.
+        Update the target actor and the target critic by copying the parameter from the updated networks. If the
+        smoothing coefficient is 1 then updates are hard otherwise the parameter update is smoothed according to.
+
+        param' = (1 - smoothing_coefficient) * target param + smoothing_coefficient * param
 
         Returns:
             No return value
         """
-        self.target_actor.load_state_dict(self.actor.state_dict())
-        self.target_critic.load_state_dict(self.critic.state_dict())
+        if smoothing_coefficient == 1:
+            self.target_actor.load_state_dict(self.actor.state_dict())
+            self.target_critic.load_state_dict(self.critic.state_dict())
+        else:
+            assert 0 < smoothing_coefficient < 1
+            with torch.no_grad():
+                for a_param, a_target_param in zip(self.actor.parameters(), self.target_actor.parameters()):
+                    a_target_param.data.mul_(1 - smoothing_coefficient)
+                    torch.add(a_target_param.data, a_param.data, alpha=smoothing_coefficient, out=a_target_param.data)
+
+                for c_param, c_target_param in zip(self.critic.parameters(), self.target_critic.parameters()):
+                    c_target_param.data.mul_(1 - smoothing_coefficient)
+                    torch.add(c_target_param.data, c_param.data, alpha=smoothing_coefficient, out=c_target_param.data)
+

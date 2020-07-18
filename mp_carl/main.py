@@ -13,7 +13,7 @@ parser = argparse.ArgumentParser(description='algorithm arguments')
 
 # Algorithm parameter
 # parser.add_argument('--num_worker', type=int, default=os.cpu_count(),
-parser.add_argument('--num_worker', type=int, default=1,
+parser.add_argument('--num_worker', type=int, default=2,
                     help='Number of workers training the agent in parallel.')
 parser.add_argument('--num_grads', type=int, default=1,
                     help='Number of gradients collected before updating the networks.')

@@ -23,9 +23,6 @@ class ParameterServer:
 
         device = "cuda:0" if torch.cuda.is_available() else "cpu"
 
-        self.delivery = torch.zeros(arg_parser.num_worker)
-        self.delivery.share_memory_()
-
         self.G = G  # number of gradients before updating networks
         self.N = torch.tensor(0)  # current number of gradients
         self.N.share_memory_()
@@ -59,16 +56,15 @@ class ParameterServer:
             No return value
         """
         with self.lock:
-            print(self.delivery)
+            if self.N == self.G:
+                self.N -= self.N
             self.add_gradients(source_actor=actor, source_critic=critic)
-            self.delivery[current_process()._identity[0] - 1] += 1
             self.N += 1
             assert self.N.is_shared()  # todo remove when everything is working
-            assert self.delivery.is_shared()
             if self.N >= self.G:
                 self.update_params()
                 # Reset to 0. Ugly but otherwise not working because position will not be in shared mem if new assigned.
-                self.N -= self.N
+                # self.N -= self.N
 
     def add_gradients(self, source_actor: torch.nn.Module, source_critic: torch.nn.Module) -> None:
         """
