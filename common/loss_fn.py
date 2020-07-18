@@ -51,6 +51,14 @@ class Retrace(torch.nn.Module):
             with trajectory τ = {(s_0, a_0, r_0),..,(s_k, a_k, r_k)}
         """
 
+        # adjust and check dimensions
+        Q.squeeze_(dim=-1)
+        target_Q.squeeze_(dim=-1)
+        expected_target_Q.squeeze_(dim=-1)
+
+        assert Q.shape == target_Q.shape == expected_target_Q.shape == rewards.shape == target_policy_probs.shape == \
+               behaviour_policy_probs.shape
+
         T = Q.shape[0]  # total number of time steps in the trajectory
 
         with torch.no_grad():
@@ -65,12 +73,16 @@ class Retrace(torch.nn.Module):
             #     logger.add_histogram(tag="retrace/target", values=target_policy_probs)
 
             Q_ret = torch.zeros_like(Q, device=self.device, dtype=torch.float)  # (B,T)
-            Q_ret[-1] = target_Q[-1]
-
-            for t in reversed(range(1, T)):
-
-                Q_ret[t - 1] = rewards[t - 1] + gamma * c_ret[t] * (Q_ret[t] - target_Q[t]) + \
-                               gamma * expected_target_Q[t]
+            if Q.dim() > 1:  # for batch learning
+                Q_ret[:, -1] = target_Q[:, -1]
+                for t in reversed(range(1, T)):
+                    Q_ret[:, t - 1] = rewards[:, t - 1] + gamma * c_ret[:, t] * (Q_ret[:, t] - target_Q[:, t]) + \
+                                      gamma * expected_target_Q[:, t]
+            else:
+                Q_ret[-1] = target_Q[-1]
+                for t in reversed(range(1, T)):
+                    Q_ret[t - 1] = rewards[t - 1] + gamma * c_ret[t] * (Q_ret[t] - target_Q[t]) + \
+                                   gamma * expected_target_Q[t]
 
         return F.mse_loss(Q, Q_ret)
 
@@ -120,7 +132,7 @@ class ActorLoss(torch.nn.Module):
         Returns:
             Scalar actor loss value
         """
-        assert Q.shape == action_log_prob.shape
+        assert Q.dim() == action_log_prob.dim()
         return - (Q - self.alpha * action_log_prob).mean()
 
     @staticmethod
