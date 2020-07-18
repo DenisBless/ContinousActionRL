@@ -24,6 +24,18 @@ class Base(torch.nn.Module):
         self.num_actions = num_actions
         self.num_obs = num_obs
 
+    def __eq__(self, other):
+        if isinstance(other, self.__class__):
+            for param, other_param in zip(self.parameters(), other.parameters()):
+                if param != param:
+                    return False
+            return True
+        else:
+            return False
+
+    def __ne__(self, other):
+        return not self.__eq__(other)
+
     def copy_params(self, source_network: torch.nn.Module) -> None:
         """
         Copy the parameters from the source network to the current network.
