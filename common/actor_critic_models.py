@@ -48,6 +48,18 @@ class Base(torch.nn.Module):
         for params in self.parameters():
             params.requires_grad = False
 
+    def is_shared(self) -> bool:
+        """
+        Checks if the network parameter are shared.
+
+        Returns:
+            True if shared
+        """
+        for params in self.parameters():
+            if not params.is_shared():
+                return False
+        return True
+
     @staticmethod
     def init_weights(module: torch.nn.Module) -> None:
         """

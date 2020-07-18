@@ -32,7 +32,7 @@ class Learner:
 
         self.logger = logger
         self.logging = argp.logging
-        self.log_every = argp.log_every
+        self.log_every = argp.log_interval
 
         self.actor_loss = ActorLoss(alpha=argp.entropy_reg)
         self.critic_loss = Retrace(num_actions=self.num_actions)

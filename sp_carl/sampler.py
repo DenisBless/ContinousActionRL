@@ -14,11 +14,13 @@ class Sampler:
         self.actor = actor
         self.replay_buffer = replay_buffer
         self.num_samples = argp.num_trajectories
-        self.log_every = argp.log_every
+        self.log_every = argp.log_interval
 
         self.logger = logger
-
-        self.pid = current_process()._identity[0]  # process ID
+        if argp.num_worker > 1:
+            self.pid = current_process()._identity[0]  # process ID
+        else:
+            self.pid = 1
 
         self.env = gym.make("Swimmer-v2")
         # self.env = gym.make("Pendulum-v0")

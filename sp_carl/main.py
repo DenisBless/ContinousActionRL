@@ -1,23 +1,20 @@
-import argparse
 import os
-import pathlib
 import numpy as np
 from gym.spaces import Box
 import torch
 
 import torch.multiprocessing as mp
+from torch.utils.tensorboard import SummaryWriter
 from common.actor_critic_models import Actor, Critic
 from common.replay_buffer import SharedReplayBuffer
-from sp_carl.agent import Agent
+from common.arg_parser import ArgParser
+from sp_carl.learner import Learner
+from sp_carl.sampler import Sampler
 
 CPU = 'cpu'
 CUDA = 'cuda:0'
 
-# from mp_carl.agent import Agent
-# from mp_carl.parameter_server import ParameterServer
-# from mp_carl.shared_replay_buffer import SharedReplayBuffer
-
-parser = argparse.ArgumentParser(description='algorithm arguments')
+parser = ArgParser()
 
 # Swimmer
 NUM_ACTIONS = 2
@@ -28,23 +25,28 @@ OBS_SPACE = None  # observation space is unbounded
 EPISODE_LENGTH = 1000
 
 
-def work(replay_buffer, actor, critic, parser_args):
-    worker = Agent(shared_replay_buffer=replay_buffer,
-                   actor=actor,
-                   critic=critic,
-                   parser_args=parser_args)
+def work(replay_buffer, actor, parser_args):
+    # if mp.current_process()._identity[0] == 1:
+    #     logger = SummaryWriter()
+    # else:
+    #     logger = None
+    worker = Sampler(replay_buffer=replay_buffer,
+                     actor=actor,
+                     argp=parser_args)
     worker.run()
 
 
 if __name__ == '__main__':
     os.environ['CUDA_VISIBLE_DEVICES'] = ""  # Disable CUDA
 
+    device = CUDA if torch.cuda.is_available() else CPU
+
     lock = mp.Lock()
     args = parser.parse_args()
 
     actor = Actor(num_actions=NUM_ACTIONS,
                   num_obs=NUM_OBSERVATIONS,
-                  log_std_init=np.log(parser_args.init_std))
+                  log_std_init=np.log(args.init_std))
 
     actor.share_memory()
 
@@ -58,35 +60,50 @@ if __name__ == '__main__':
                                               num_actions=NUM_ACTIONS,
                                               num_obs=NUM_OBSERVATIONS,
                                               lock=lock)
+
+    learner = Learner(actor=actor,
+                      critic=critic,
+                      replay_buffer=shared_replay_buffer,
+                      device=device,
+                      num_actions=NUM_ACTIONS,
+                      num_obs=NUM_OBSERVATIONS,
+                      argp=args)
+
     n = 0
     while n < args.num_runs:
-        actor.to_(CPU)
-        critic.to_(CPU)
+
+        assert actor.is_shared() and critic.is_shared()
+        actor = actor.to(CPU)
+        critic = critic.to(CPU)
 
         if args.num_worker == 1:
-            work(replay_buffer=shared_replay_buffer, actor=actor, critic=critic, parser_args=args,)
+            import time
+
+            t = time.time()
+            work(replay_buffer=shared_replay_buffer, actor=actor, parser_args=args)
+            print(time.time() - t)
 
         elif args.num_worker > 1:
-            processes = [mp.Process(target=work, args=(shared_replay_buffer, actor, critic, args))
+            processes = [mp.Process(target=work, args=(shared_replay_buffer, actor, args))
                          for _ in range(args.num_worker)]
+            import time
+            t = time.time()
             for p in processes:
                 p.start()
 
             for p in processes:
                 p.join()
 
+            print(time.time() - t)
+
         else:
             raise ValueError("Error, the number of workers has to be positive.")
 
-        actor.to_(CUDA) if torch.cuda.is_available() else actor.to_(CPU)
-        critic.to_(CUDA) if torch.cuda.is_available() else critic.to_(CPU)
+        print(len(shared_replay_buffer))
 
+        actor = actor.to(CUDA) if torch.cuda.is_available() else actor.to(CPU)
+        critic = critic.to(CUDA) if torch.cuda.is_available() else critic.to(CPU)
 
-
-
-
-
-
-
+        # learner.learn()
 
         n += 1

@@ -53,8 +53,8 @@ class SharedReplayBuffer(ReplayBuffer):
         self.reward_memory.share_memory_()
         self.log_prob_memory.share_memory_()
 
-        self.position.share_memory()
-        self.full.share_memory()
+        self.position.share_memory_()
+        self.full.share_memory_()
 
     def push(self, states, actions, rewards, log_probs) -> None:
         with self.lock:
