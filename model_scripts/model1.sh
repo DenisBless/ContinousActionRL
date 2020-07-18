@@ -1,6 +1,6 @@
 python3 ../mp_carl/main.py \
---num_worker=6 \
---num_grads=12 \
+--num_worker=2 \
+--num_grads=4 \
 --update_targnets_every=1000 \
 --learning_steps=3000 \
 --actor_lr=1e-4 \
