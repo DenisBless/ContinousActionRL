@@ -3,6 +3,7 @@ import os
 import pathlib
 import numpy as np
 from gym.spaces import Box
+import torch
 
 import torch.multiprocessing as mp
 from common.actor_critic_models import Actor, Critic
@@ -43,10 +44,14 @@ if __name__ == '__main__':
 
     actor = Actor(num_actions=NUM_ACTIONS,
                   num_obs=NUM_OBSERVATIONS,
-                  log_std_init=np.log(parser_args.init_std)).to(CPU)
+                  log_std_init=np.log(parser_args.init_std))
+
+    actor.share_memory()
 
     critic = Critic(num_actions=NUM_ACTIONS,
-                    num_obs=NUM_OBSERVATIONS).to(CPU)
+                    num_obs=NUM_OBSERVATIONS)
+
+    critic.share_memory()
 
     shared_replay_buffer = SharedReplayBuffer(capacity=args.replay_buffer_size,
                                               trajectory_length=EPISODE_LENGTH,
@@ -54,7 +59,9 @@ if __name__ == '__main__':
                                               num_obs=NUM_OBSERVATIONS,
                                               lock=lock)
     n = 0
-    while n < N:
+    while n < args.num_runs:
+        actor.to_(CPU)
+        critic.to_(CPU)
 
         if args.num_worker == 1:
             work(replay_buffer=shared_replay_buffer, actor=actor, critic=critic, parser_args=args,)
@@ -70,6 +77,14 @@ if __name__ == '__main__':
 
         else:
             raise ValueError("Error, the number of workers has to be positive.")
+
+        actor.to_(CUDA) if torch.cuda.is_available() else actor.to_(CPU)
+        critic.to_(CUDA) if torch.cuda.is_available() else critic.to_(CPU)
+
+
+
+
+
 
 
 

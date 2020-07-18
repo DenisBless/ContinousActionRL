@@ -36,9 +36,7 @@ class Agent:
             self.logger = SummaryWriter()
 
         self.shared_replay_buffer = shared_replay_buffer
-        self.env = gym.make("Swimmer-v2")
-        # self.env = gym.make("Pendulum-v0")
-        # self.env = gym.make("HalfCheetah-v2")
+
         self.num_actions = self.env.action_space.shape[0]
         self.num_obs = self.env.observation_space.shape[0]
         self.actor = Actor(num_actions=self.num_actions,
