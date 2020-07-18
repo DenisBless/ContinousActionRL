@@ -1,12 +1,12 @@
 python3 ../sp_carl/main.py \
---num_worker=6 \
+--num_worker=12 \
 --batch_size=32 \
---update_targnets_every=200 \
---learning_steps=2000 \
+--update_targnets_every=80 \
+--learning_steps=800 \
 --actor_lr=1e-4 \
 --critic_lr=1e-4 \
---init_std=0.5 \
---global_gradient_norm=0.5 \
---entropy_reg=0 \
+--init_std=0.2 \
+--global_gradient_norm=-1 \
+--entropy_reg=1e-3 \
 --replay_buffer_size=20000 \
---num_trajectories=200  \
+--num_trajectories=50  \
