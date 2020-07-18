@@ -1,12 +1,14 @@
 import torch
+from torch.multiprocessing import Lock
 import random
 
 
 class ReplayBuffer(object):
-    def __init__(self, num_obs: int, num_actions: int, trajectory_length: int, capacity: int):
+    def __init__(self, num_obs: int, num_actions: int, trajectory_length: int, capacity: int, batch_size: int = 1):
         self.capacity = capacity
         self.num_actions = num_actions
         self.num_obs = num_obs
+        self.batch_size = batch_size
 
         self.state_memory = torch.zeros([capacity, trajectory_length, num_obs], dtype=torch.float32)
         self.action_memory = torch.zeros([capacity, trajectory_length, num_actions], dtype=torch.float32)
@@ -18,9 +20,9 @@ class ReplayBuffer(object):
 
     def sample(self):
         if not self.full:
-            idx = random.sample(range(self.position.item()), 1)
+            idx = random.sample(range(self.position.item()), self.batch_size)
         else:
-            idx = random.sample(range(self.capacity), 1)
+            idx = random.sample(range(self.capacity), self.batch_size)
         return self.state_memory[idx].squeeze(dim=0), self.action_memory[idx].squeeze(dim=0), \
                self.reward_memory[idx].squeeze(dim=0), self.log_prob_memory[idx].squeeze(dim=0)
 
@@ -44,8 +46,14 @@ class ReplayBuffer(object):
 
 
 class SharedReplayBuffer(ReplayBuffer):
-    def __init__(self, num_obs: int, num_actions: int, trajectory_length: int, capacity: int, lock):
-        super(SharedReplayBuffer, self).__init__(num_obs, num_actions, trajectory_length, capacity)
+    def __init__(self,
+                 num_obs: int,
+                 num_actions: int,
+                 trajectory_length: int,
+                 capacity: int,
+                 batch_size: int,
+                 lock: Lock):
+        super(SharedReplayBuffer, self).__init__(num_obs, num_actions, trajectory_length, capacity, batch_size)
 
         self.lock = lock
         self.state_memory.share_memory_()
@@ -65,4 +73,4 @@ class SharedReplayBuffer(ReplayBuffer):
 
     def sample(self):
         with self.lock:
-            super().sample()
+            return super().sample()

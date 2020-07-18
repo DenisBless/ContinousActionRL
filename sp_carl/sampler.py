@@ -26,7 +26,7 @@ class Sampler:
         # self.env = gym.make("Pendulum-v0")
         # self.env = gym.make("HalfCheetah-v2")
 
-    def run(self):
+    def run(self, evaluate=False):
         for i in range(self.num_samples):
             states, actions, rewards, action_log_probs = [], [], [], []
 
@@ -38,7 +38,8 @@ class Sampler:
                 action = action
                 next_obs, reward, done, _ = self.env.step(action.detach().cpu())
                 next_obs = torch.tensor(next_obs, dtype=torch.float)
-                reward = torch.tensor(reward, dtype=torch.float)
+                # reward = torch.tensor(reward, dtype=torch.float)
+                reward = reward.clone().detach()
                 states.append(obs)
                 actions.append(action)
                 rewards.append(reward)

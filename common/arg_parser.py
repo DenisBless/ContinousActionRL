@@ -7,10 +7,12 @@ class ArgParser(ArgumentParser):
 
         # Algorithm parameter
         # parser.add_argument('--num_worker', type=int, default=os.cpu_count(),
-        self.add_argument('--num_worker', type=int, default=4,
+        self.add_argument('--num_worker', type=int, default=1,
                           help='Number of workers training the agent in parallel.')
         self.add_argument('--num_grads', type=int, default=2,
                           help='Number of gradients collected before updating the networks.')
+        self.add_argument('--batch_size', type=int, default=20,
+                          help='Number of trajectories in a batch.')
         self.add_argument('--update_targnets_every', type=int, default=10,
                           help='Number of learning steps before the target networks are updated.')
         self.add_argument('--learning_steps', type=int, default=2000,
@@ -44,7 +46,7 @@ class ArgParser(ArgumentParser):
         # Environment parameter
         # parser.add_argument('--episode_length', type=int, default=200,
         #                     help='Length of a episode.')
-        self.add_argument('--num_eval_trajectories', type=int, default=1,
+        self.add_argument('--num_evals', type=int, default=5,
                           help='Number of trajectories used for evaluating the policy.')
         self.add_argument('--num_trajectories', type=int, default=20,
                           help='Number of trajectories sampled before entering the learning phase.')
