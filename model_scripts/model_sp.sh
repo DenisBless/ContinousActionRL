@@ -4,9 +4,9 @@ python3 ../sp_carl/main.py \
 --update_targnets_every=1 \
 --smoothing_coefficient=0.005 \
 --learning_steps=500 \
---actor_lr=7e-5 \
---critic_lr=3e-4 \
---init_std=0.2 \
+--actor_lr=2e-4 \
+--critic_lr=2e-4 \
+--init_std=0 \
 --global_gradient_norm=-1 \
 --entropy_reg=1e-2 \
 --replay_buffer_size=20000 \
