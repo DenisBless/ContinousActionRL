@@ -61,21 +61,18 @@ class Base(torch.nn.Module):
         return True
 
     @property
-    def param_norm(self) -> float:
+    def param_norm(self):
         p_norm = 0
         for params in self.parameters():
             p_norm += params.norm()
         return p_norm
 
     @property
-    def grad_norm(self) -> float:
+    def grad_norm(self):
         g_norm = 0
         for params in self.parameters():
             g_norm += params.grad.norm()
         return g_norm
-
-
-
 
     @staticmethod
     def init_weights(module: torch.nn.Module) -> None:

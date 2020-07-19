@@ -25,6 +25,8 @@ class ArgParser(ArgumentParser):
                           help='Learning rate for the critic network.')
         self.add_argument('--init_std', type=float, default=0.2,
                           help='Initial standard deviation of the actor.')
+        self.add_argument('--smoothing_coefficient', type=float, default=1,
+                          help='???.')
 
         self.add_argument('--global_gradient_norm', type=float, default=0.5,
                           help='Enables gradient clipping with a specified global parameter L2 norm')

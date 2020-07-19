@@ -61,6 +61,8 @@ class Retrace(torch.nn.Module):
 
         T = Q.shape[0]  # total number of time steps in the trajectory
 
+        rewards = rewards * 30
+
         with torch.no_grad():
             # We don't want gradients from computing Q_ret, since:
             # ∇φ (Q - Q_ret)^2 ∝ (Q - Q_ret) * ∇φ Q
@@ -107,7 +109,8 @@ class Retrace(torch.nn.Module):
         log_retrace_weights = (target_policy_logprob - behaviour_policy_logprob).clamp(max=0)
 
         assert not torch.isnan(log_retrace_weights).any(), "Error, a least one NaN value found in retrace weights."
-        return log_retrace_weights.exp().pow(1 / self.num_actions)
+        return log_retrace_weights.exp()
+        # return log_retrace_weights.exp().pow(1 / self.num_actions)
 
 
 class ActorLoss(torch.nn.Module):
@@ -133,8 +136,8 @@ class ActorLoss(torch.nn.Module):
             Scalar actor loss value
         """
         assert Q.dim() == action_log_prob.dim()
-        return (self.alpha * action_log_prob - Q).mean()
-        # return - Q.mean()
+        # return (self.alpha * action_log_prob - Q).mean()
+        return - Q.mean()
 
     @staticmethod
     def kl_divergence(old_mean, old_std, mean, std):

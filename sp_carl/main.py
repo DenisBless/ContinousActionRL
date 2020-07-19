@@ -21,6 +21,7 @@ from sp_carl.evaluator import Evaluator
 CPU = 'cpu'
 CUDA = 'cuda:0'
 
+SAVE_MODEL_EVERY = 10
 parser = ArgParser()
 
 # Swimmer
@@ -46,7 +47,7 @@ if __name__ == '__main__':
 
     model_root_dir = str(pathlib.Path(__file__).resolve().parents[1]) + "/models/"
     assert os.path.isdir(model_root_dir)
-    model_dir = model_root_dir + "/" + datetime.datetime.now().strftime("%H_%M__%d_%m")
+    model_dir = model_root_dir + datetime.datetime.now().strftime("%H_%M__%d_%m")
     os.mkdir(model_dir)
 
     lock = mp.Lock()
@@ -75,6 +76,7 @@ if __name__ == '__main__':
                       num_actions=NUM_ACTIONS,
                       num_obs=NUM_OBSERVATIONS,
                       argp=args,
+                      smoothing_coefficient=args.smoothing_coefficient,
                       logger=logger)
 
     evaluator = Evaluator(actor=actor, argp=args, logger=logger)
@@ -122,7 +124,7 @@ if __name__ == '__main__':
         n += 1
 
         # Saving the model parameters
-        if args.save_model_every == 0:
+        if n % SAVE_MODEL_EVERY == 0:
             torch.save(actor.state_dict(), model_dir + "/actor_" + str(n))
             torch.save(critic.state_dict(), model_dir + "/critic_" + str(n))
 

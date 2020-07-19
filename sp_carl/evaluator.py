@@ -19,6 +19,7 @@ class Evaluator:
         # self.env = gym.make("HalfCheetah-v2")
 
     def eval(self):
+        r = []
         for i in range(self.num_samples):
             rewards = []
 
@@ -32,4 +33,6 @@ class Evaluator:
                 rewards.append(reward)
                 obs = next_obs
 
-            self.logger.add_scalar(scalar_value=sum(rewards) / len(rewards), tag="mean reward")
+            r.append(sum(rewards) / len(rewards))
+
+        self.logger.add_scalar(scalar_value=max(r), tag="mean reward")
