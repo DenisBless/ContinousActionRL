@@ -13,7 +13,7 @@ class ArgParser(ArgumentParser):
                           help='Number of gradients collected before updating the networks.')
         self.add_argument('--batch_size', type=int, default=20,
                           help='Number of trajectories in a batch.')
-        self.add_argument('--update_targnets_every', type=int, default=10,
+        self.add_argument('--update_targnets_every', type=int, default=1,
                           help='Number of learning steps before the target networks are updated.')
         self.add_argument('--learning_steps', type=int, default=200,
                           help='Total number of learning timesteps before sampling trajectories.')
@@ -25,8 +25,9 @@ class ArgParser(ArgumentParser):
                           help='Learning rate for the critic network.')
         self.add_argument('--init_std', type=float, default=0.2,
                           help='Initial standard deviation of the actor.')
-        self.add_argument('--smoothing_coefficient', type=float, default=1,
-                          help='???.')
+        self.add_argument('--smoothing_coefficient', type=float, default=0.005,
+                          help='Decides how the target networks are updated. One corresponds to a hard updates, whereas'
+                               ' values between zero and one result in exponential moving average updates.')
 
         self.add_argument('--global_gradient_norm', type=float, default=0.5,
                           help='Enables gradient clipping with a specified global parameter L2 norm')

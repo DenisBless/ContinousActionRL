@@ -43,6 +43,7 @@ class Learner:
 
         self.update_targnets_every = argp.update_targnets_every
         self.learning_steps = argp.learning_steps
+        self.smoothing_coefficient = smoothing_coefficient
 
     def learn(self) -> None:
 
@@ -62,7 +63,7 @@ class Learner:
 
             # Update the target networks
             if i % self.update_targnets_every == 0:
-                self.update_targnets()
+                self.update_targnets(smoothing_coefficient=self.smoothing_coefficient)
 
             self.actor.train()
             self.critic.train()
@@ -138,7 +139,7 @@ class Learner:
                 # print(current_mean[:10])
                 self.logger.add_histogram(values=current_actions, tag="Statistics/Action")
 
-    def update_targnets(self, smoothing_coefficient=1) -> None:
+    def update_targnets(self, smoothing_coefficient=1.) -> None:
         """
         Update the target actor and the target critic by copying the parameter from the updated networks. If the
         smoothing coefficient is 1 then updates are hard otherwise the parameter update is smoothed according to.
