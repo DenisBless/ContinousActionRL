@@ -75,7 +75,6 @@ if __name__ == '__main__':
                       num_actions=NUM_ACTIONS,
                       num_obs=NUM_OBSERVATIONS,
                       argp=args,
-                      smoothing_coefficient=args.smoothing_coefficient,
                       logger=logger)
 
     evaluator = Evaluator(actor=actor, argp=args, logger=logger)

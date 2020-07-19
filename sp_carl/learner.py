@@ -14,7 +14,6 @@ class Learner:
                  num_actions: int,
                  num_obs: int,
                  argp,
-                 smoothing_coefficient: float = 1,
                  logger=None):
 
         self.actor = actor
@@ -43,7 +42,8 @@ class Learner:
 
         self.update_targnets_every = argp.update_targnets_every
         self.learning_steps = argp.learning_steps
-        self.smoothing_coefficient = smoothing_coefficient
+        self.smoothing_coefficient = argp.smoothing_coefficient
+        self.global_gradient_norm = argp.global_gradient_norm
 
     def learn(self) -> None:
 
@@ -110,6 +110,9 @@ class Learner:
                                                    logger=self.logger)
             critic_loss.backward(retain_graph=True)
 
+            if self.global_gradient_norm != -1:
+                torch.nn.utils.clip_grad_norm_(self.critic.parameters(), self.global_gradient_norm)
+
             self.critic_opt.step()
 
             # Actor update
@@ -120,6 +123,9 @@ class Learner:
                                                  action_log_prob=current_action_log_prob.unsqueeze(-1))
             actor_loss.backward()
 
+            if self.global_gradient_norm != -1:
+                torch.nn.utils.clip_grad_norm_(self.actor.parameters(), self.global_gradient_norm)
+
             self.actor_opt.step()
 
             # Keep track of different values
@@ -128,6 +134,7 @@ class Learner:
                 self.logger.add_scalar(scalar_value=critic_loss.item(), tag="Loss/Critic_loss")
                 self.logger.add_scalar(scalar_value=current_log_std.exp().mean(), tag="Statistics/Action_std_mean")
                 self.logger.add_scalar(scalar_value=current_log_std.exp().std(), tag="Statistics/Action_std_std")
+                self.logger.add_scalar(scalar_value=Q.mean(), tag="Statistics/Q")
 
                 self.logger.add_scalar(scalar_value=self.critic.param_norm, tag="Critic/param norm")
                 self.logger.add_scalar(scalar_value=self.critic.grad_norm, tag="Critic/grad norm")

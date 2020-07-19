@@ -61,7 +61,7 @@ class Retrace(torch.nn.Module):
 
         T = Q.shape[0]  # total number of time steps in the trajectory
 
-        rewards = rewards * 30
+        rewards = rewards * 100
 
         with torch.no_grad():
             # We don't want gradients from computing Q_ret, since:
