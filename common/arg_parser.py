@@ -7,7 +7,7 @@ class ArgParser(ArgumentParser):
 
         # Algorithm parameter
         # parser.add_argument('--num_worker', type=int, default=os.cpu_count(),
-        self.add_argument('--num_worker', type=int, default=1,
+        self.add_argument('--num_worker', type=int, default=2,
                           help='Number of workers training the agent in parallel.')
         self.add_argument('--num_grads', type=int, default=2,
                           help='Number of gradients collected before updating the networks.')

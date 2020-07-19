@@ -1,6 +1,6 @@
 python3 ../sp_carl/main.py \
 --num_worker=12 \
---batch_size=64 \
+--batch_size=256 \
 --update_targnets_every=1 \
 --smoothing_coefficient=0.005 \
 --learning_steps=500 \

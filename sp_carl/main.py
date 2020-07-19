@@ -41,12 +41,11 @@ def work(replay_buffer, actor, parser_args):
 
 
 if __name__ == '__main__':
-    os.environ['CUDA_VISIBLE_DEVICES'] = ""  # Disable CUDA
-
     device = CUDA if torch.cuda.is_available() else CPU
 
     model_root_dir = str(pathlib.Path(__file__).resolve().parents[1]) + "/models/"
-    assert os.path.isdir(model_root_dir)
+    if not os.path.isdir(model_root_dir):
+        os.mkdir(model_root_dir)
     model_dir = model_root_dir + datetime.datetime.now().strftime("%H_%M__%d_%m")
     os.mkdir(model_dir)
 
@@ -127,4 +126,3 @@ if __name__ == '__main__':
         if n % SAVE_MODEL_EVERY == 0:
             torch.save(actor.state_dict(), model_dir + "/actor_" + str(n))
             torch.save(critic.state_dict(), model_dir + "/critic_" + str(n))
-
