@@ -69,10 +69,7 @@ class Retrace(torch.nn.Module):
 
             c_ret = self.calc_retrace_weights(target_policy_probs, behaviour_policy_probs)  # [1:]
 
-            if logger is not None:
-                logger.add_histogram(tag="retrace/ratio", values=c_ret)
-                logger.add_histogram(tag="retrace/behaviour", values=behaviour_policy_probs)
-                logger.add_histogram(tag="retrace/target", values=target_policy_probs)
+
 
             Q_ret = torch.zeros_like(Q, device=self.device, dtype=torch.float)  # (B,T)
             if Q.dim() > 1:  # for batch learning
@@ -85,6 +82,18 @@ class Retrace(torch.nn.Module):
                 for t in reversed(range(1, T)):
                     Q_ret[t - 1] = rewards[t - 1] + gamma * c_ret[t] * (Q_ret[t] - target_Q[t]) + \
                                    gamma * expected_target_Q[t]
+
+            if logger is not None:
+                logger.add_histogram(tag="retrace/ratio", values=c_ret)
+                logger.add_histogram(tag="retrace/behaviour", values=behaviour_policy_probs)
+                logger.add_histogram(tag="retrace/target", values=target_policy_probs)
+
+                logger.add_scalar(tag="retace/Qret-targetQ mean", scalar_value=(Q_ret - target_Q).mean())
+                logger.add_scalar(tag="retace/Qret-targetQ std", scalar_value=(Q_ret - target_Q).std())
+                logger.add_scalar(tag="retrace/E[targetQ] mean", scalar_value=expected_target_Q.mean())
+                logger.add_scalar(tag="retrace/E[targetQ] std", scalar_value=expected_target_Q.std())
+
+
 
         return F.mse_loss(Q, Q_ret)
 

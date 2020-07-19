@@ -84,8 +84,8 @@ class Learner:
             mean, log_std = self.target_actor.forward(states)
             mean, log_std = mean.to(self.device), log_std.to(self.device)
 
-            # action_sample, _ = self.target_actor.action_sample(mean, log_std)
-            action_sample = torch.tanh(mean)
+            action_sample, _ = self.target_actor.action_sample(mean, log_std)
+            # action_sample = torch.tanh(mean)
             expected_target_Q = self.target_critic.forward(action_sample, states)
 
             # log(π_target(a_t | s_t))
