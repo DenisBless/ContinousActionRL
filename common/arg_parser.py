@@ -28,6 +28,8 @@ class ArgParser(ArgumentParser):
         self.add_argument('--smoothing_coefficient', type=float, default=0.005,
                           help='Decides how the target networks are updated. One corresponds to a hard updates, whereas'
                                ' values between zero and one result in exponential moving average updates.')
+        self.add_argument('--reward_scale', type=int, default=1,
+                          help='Scales the reward.')
 
         self.add_argument('--global_gradient_norm', type=float, default=0.5,
                           help='Enables gradient clipping with a specified global parameter L2 norm')

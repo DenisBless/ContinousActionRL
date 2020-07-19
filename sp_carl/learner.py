@@ -35,7 +35,7 @@ class Learner:
         self.log_every = argp.log_interval
 
         self.actor_loss = ActorLoss(alpha=argp.entropy_reg)
-        self.critic_loss = Retrace(num_actions=self.num_actions)
+        self.critic_loss = Retrace(num_actions=self.num_actions, reward_scale=argp.reward_scale)
 
         self.actor_opt = torch.optim.Adam(actor.parameters(), argp.actor_lr)
         self.critic_opt = torch.optim.Adam(critic.parameters(), argp.critic_lr)
@@ -110,10 +110,10 @@ class Learner:
                                                    logger=self.logger)
             critic_loss.backward(retain_graph=True)
 
-            if self.global_gradient_norm != -1:
-                torch.nn.utils.clip_grad_norm_(self.critic.parameters(), self.global_gradient_norm)
-
-            self.critic_opt.step()
+            # if self.global_gradient_norm != -1:
+            #     torch.nn.utils.clip_grad_norm_(self.critic.parameters(), self.global_gradient_norm)
+            #
+            # self.critic_opt.step()
 
             # Actor update
             # Q(a, s_t)
@@ -125,7 +125,9 @@ class Learner:
 
             if self.global_gradient_norm != -1:
                 torch.nn.utils.clip_grad_norm_(self.actor.parameters(), self.global_gradient_norm)
+                torch.nn.utils.clip_grad_norm_(self.critic.parameters(), self.global_gradient_norm)
 
+            self.critic_opt.step()
             self.actor_opt.step()
 
             # Keep track of different values

@@ -4,9 +4,10 @@ from torch.multiprocessing import current_process
 
 
 class Retrace(torch.nn.Module):
-    def __init__(self, num_actions):
-        self.num_actions = num_actions
+    def __init__(self, num_actions, reward_scale):
         super(Retrace, self).__init__()
+        self.num_actions = num_actions
+        self.reward_scale = reward_scale
         self.device = "cuda:0" if torch.cuda.is_available() else "cpu"
 
     def forward(self,
@@ -61,15 +62,13 @@ class Retrace(torch.nn.Module):
 
         T = Q.shape[0]  # total number of time steps in the trajectory
 
-        rewards = rewards * 100
+        rewards = rewards * self.reward_scale
 
         with torch.no_grad():
             # We don't want gradients from computing Q_ret, since:
             # ∇φ (Q - Q_ret)^2 ∝ (Q - Q_ret) * ∇φ Q
 
             c_ret = self.calc_retrace_weights(target_policy_probs, behaviour_policy_probs)  # [1:]
-
-
 
             Q_ret = torch.zeros_like(Q, device=self.device, dtype=torch.float)  # (B,T)
             if Q.dim() > 1:  # for batch learning
@@ -92,8 +91,6 @@ class Retrace(torch.nn.Module):
                 logger.add_scalar(tag="retace/Qret-targetQ std", scalar_value=(Q_ret - target_Q).std())
                 logger.add_scalar(tag="retrace/E[targetQ] mean", scalar_value=expected_target_Q.mean())
                 logger.add_scalar(tag="retrace/E[targetQ] std", scalar_value=expected_target_Q.std())
-
-
 
         return F.mse_loss(Q, Q_ret)
 

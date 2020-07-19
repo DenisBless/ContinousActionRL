@@ -22,8 +22,8 @@ class Sampler:
         else:
             self.pid = 1
 
-        self.env = gym.make("Swimmer-v2")
-        # self.env = gym.make("Pendulum-v0")
+        # self.env = gym.make("Swimmer-v2")
+        self.env = gym.make("Pendulum-v0")
         # self.env = gym.make("HalfCheetah-v2")
 
     def run(self):

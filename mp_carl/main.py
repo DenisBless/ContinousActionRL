@@ -76,13 +76,13 @@ SAVE_MODEL_EVERY = 10
 LOG_INTERVAL = 10
 
 # Pendulum
-# NUM_ACTIONS = 1
-# NUM_OBSERVATIONS = 3
-# ACTION_SPACE = Box(low=np.array([-2.]),
-#                    high=np.array([2.]))
-# OBS_SPACE = Box(low=np.array([-1., -1., -8.]),
-#                 high=np.array([1., 1., 8.]))
-# EPISODE_LENGTH = 200
+NUM_ACTIONS = 1
+NUM_OBSERVATIONS = 3
+ACTION_SPACE = Box(low=np.array([-2.]),
+                   high=np.array([2.]))
+OBS_SPACE = Box(low=np.array([-1., -1., -8.]),
+                high=np.array([1., 1., 8.]))
+EPISODE_LENGTH = 200
 
 # HalfCheetah
 # NUM_ACTIONS = 6
