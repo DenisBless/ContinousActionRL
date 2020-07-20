@@ -6,13 +6,15 @@ from common.replay_buffer import SharedReplayBuffer
 class Evaluator:
     def __init__(self,
                  actor: torch.nn.Module,
-                 logger,
-                 argp):
+                 argp,
+                 logger=None,
+                 render: bool = False):
 
         self.device = "cuda:0" if torch.cuda.is_available() else "cpu"
 
         self.actor = actor
         self.num_samples = argp.num_evals
+        self.render = render
 
         self.logger = logger
 
@@ -35,7 +37,10 @@ class Evaluator:
                 next_obs = torch.tensor(next_obs, dtype=torch.float).to(self.device)
                 rewards.append(reward)
                 obs = next_obs
+                if self.render:
+                    self.env.render()
 
             r.append(sum(rewards) / len(rewards))
 
-        self.logger.add_scalar(scalar_value=max(r), tag="mean reward")
+        if self.logger is not None:
+            self.logger.add_scalar(scalar_value=max(r), tag="mean reward")

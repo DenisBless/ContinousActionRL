@@ -63,7 +63,7 @@ if __name__ == '__main__':
     lock = mp.Lock()
     args = parser.parse_args()
     logger = SummaryWriter()
-    logger.add_hparams(get_hparam_dict(args), {'mean reward/mean reward': 0})
+    # logger.add_hparams(get_hparam_dict(args), {'mean reward': 0})
 
     actor = Actor(num_actions=NUM_ACTIONS, num_obs=NUM_OBSERVATIONS, log_std_init=np.log(args.init_std))
 
