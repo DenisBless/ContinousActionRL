@@ -1,6 +1,6 @@
 python3 ../sp_carl/main.py \
---num_worker=1 \
---batch_size=1 \
+--num_worker=16 \
+--batch_size=64 \
 --update_targnets_every=100 \
 --learning_steps=800 \
 --smoothing_coefficient=1 \
@@ -10,5 +10,5 @@ python3 ../sp_carl/main.py \
 --init_std=1 \
 --global_gradient_norm=0.5 \
 --entropy_reg=0 \
---replay_buffer_size=10000 \
---num_trajectories=20  \
+--replay_buffer_size=50000 \
+--num_trajectories=50  \

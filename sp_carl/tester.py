@@ -22,9 +22,9 @@ EPISODE_LENGTH = 200
 if __name__ == '__main__':
     args = parser.parse_args()
 
-    model_dir = str(pathlib.Path(__file__).resolve().parents[1]) + "/models/" + "14_32__20_07/actor_230"
+    model_dir = str(pathlib.Path(__file__).resolve().parents[1]) + "/models/" + "20_14__20_07/actor_10"
 
-    actor = Actor(num_actions=NUM_ACTIONS, num_obs=NUM_OBSERVATIONS, log_std_init=np.log(args.init_std))
+    actor = Actor(num_actions=NUM_ACTIONS, num_obs=NUM_OBSERVATIONS, log_std_init=np.log(args.init_std)).to("cuda:0")
 
     actor.load_state_dict(torch.load(model_dir))
 
