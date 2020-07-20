@@ -7,13 +7,13 @@ class ArgParser(ArgumentParser):
 
         # Algorithm parameter
         # parser.add_argument('--num_worker', type=int, default=os.cpu_count(),
-        self.add_argument('--num_worker', type=int, default=2,
+        self.add_argument('--num_worker', type=int, default=1,
                           help='Number of workers training the agent in parallel.')
-        self.add_argument('--num_grads', type=int, default=2,
+        self.add_argument('--num_grads', type=int, default=1,
                           help='Number of gradients collected before updating the networks.')
-        self.add_argument('--batch_size', type=int, default=20,
+        self.add_argument('--batch_size', type=int, default=1,
                           help='Number of trajectories in a batch.')
-        self.add_argument('--update_targnets_every', type=int, default=1,
+        self.add_argument('--update_targnets_every', type=int, default=10,
                           help='Number of learning steps before the target networks are updated.')
         self.add_argument('--learning_steps', type=int, default=200,
                           help='Total number of learning timesteps before sampling trajectories.')
@@ -25,7 +25,7 @@ class ArgParser(ArgumentParser):
                           help='Learning rate for the critic network.')
         self.add_argument('--init_std', type=float, default=0.2,
                           help='Initial standard deviation of the actor.')
-        self.add_argument('--smoothing_coefficient', type=float, default=0.005,
+        self.add_argument('--smoothing_coefficient', type=float, default=1,
                           help='Decides how the target networks are updated. One corresponds to a hard updates, whereas'
                                ' values between zero and one result in exponential moving average updates.')
         self.add_argument('--reward_scale', type=int, default=1,
@@ -69,3 +69,16 @@ class ArgParser(ArgumentParser):
 
         self.add_argument('--log_interval', type=int, default=10,
                           help='Interval of the logger writing data to the tensorboard.')
+
+    def hparam_dict(self):
+        return {'update_targets': ...,
+                'learning_steps': ...,
+                'actor_lr': ...,
+                'critic_lr': ...,
+                'entropy_reg': ...,
+                'init_std': ...,
+                'global_gradient_norm': ...,
+                'replay_buffer_size': ...,
+                'num_trajectories': ...
+                }
+

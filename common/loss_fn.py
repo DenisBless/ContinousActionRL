@@ -3,22 +3,22 @@ import torch.nn.functional as F
 from torch.multiprocessing import current_process
 
 
-class Retrace(torch.nn.Module):
+class Retrace:
     def __init__(self, num_actions, reward_scale):
         super(Retrace, self).__init__()
         self.num_actions = num_actions
         self.reward_scale = reward_scale
         self.device = "cuda:0" if torch.cuda.is_available() else "cpu"
 
-    def forward(self,
-                Q,
-                expected_target_Q,
-                target_Q,
-                rewards,
-                target_policy_probs,
-                behaviour_policy_probs,
-                gamma=0.99,
-                logger=None):
+    def __call__(self,
+                 Q,
+                 expected_target_Q,
+                 target_Q,
+                 rewards,
+                 target_policy_probs,
+                 behaviour_policy_probs,
+                 gamma=0.99,
+                 logger=None):
         """
         Implementation of Retrace loss ((http://arxiv.org/abs/1606.02647)) in PyTorch.
 
@@ -82,6 +82,14 @@ class Retrace(torch.nn.Module):
                     Q_ret[t - 1] = rewards[t - 1] + gamma * c_ret[t] * (Q_ret[t] - target_Q[t]) + \
                                    gamma * expected_target_Q[t]
 
+                # iterative version
+                # Q_ret_it = torch.zeros_like(Q_ret)
+                # for t in range(T):
+                #     Q_ret_it[t] = target_Q[t]
+                #     for j in range(t, T - 1):
+                #         Q_ret_it[t] += (gamma ** (j - t)) * c_ret[t + 1:j].prod() * \
+                #                     (rewards[j] + gamma * expected_target_Q[j + 1] - target_Q[j])
+
             if logger is not None:
                 logger.add_histogram(tag="retrace/ratio", values=c_ret)
                 logger.add_histogram(tag="retrace/behaviour", values=behaviour_policy_probs)
@@ -115,22 +123,20 @@ class Retrace(torch.nn.Module):
         log_retrace_weights = (target_policy_logprob - behaviour_policy_logprob).clamp(max=0)
 
         assert not torch.isnan(log_retrace_weights).any(), "Error, a least one NaN value found in retrace weights."
-        return log_retrace_weights.exp()
-        # return log_retrace_weights.exp().pow(1 / self.num_actions)
+        # return log_retrace_weights.exp()
+        return log_retrace_weights.exp().pow(1 / self.num_actions)
 
 
-class ActorLoss(torch.nn.Module):
-    def __init__(self,
-                 alpha=0):
+class ActorLoss:
+    def __init__(self, alpha=0):
         """
         Loss function for the actor.
         Args:
             alpha: entropy regularization parameter.
         """
-        super(ActorLoss, self).__init__()
         self.alpha = alpha
 
-    def forward(self, Q, action_log_prob):
+    def __call__(self, Q, action_log_prob):
         """
         Computes the loss of the actor according to
         L = 𝔼_π [Q(a,s) - α log(π(a|s)]

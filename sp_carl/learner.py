@@ -1,6 +1,7 @@
 import copy
 
 import torch
+from torch.nn.utils import clip_grad_norm_
 from common.loss_fn import ActorLoss, Retrace
 from common.replay_buffer import SharedReplayBuffer
 
@@ -37,8 +38,8 @@ class Learner:
         self.actor_loss = ActorLoss(alpha=argp.entropy_reg)
         self.critic_loss = Retrace(num_actions=self.num_actions, reward_scale=argp.reward_scale)
 
-        self.actor_opt = torch.optim.Adam(actor.parameters(), argp.actor_lr)
-        self.critic_opt = torch.optim.Adam(critic.parameters(), argp.critic_lr)
+        self.actor_opt = torch.optim.Adam(self.actor.parameters(), argp.actor_lr)
+        self.critic_opt = torch.optim.Adam(self.critic.parameters(), argp.critic_lr)
 
         self.update_targnets_every = argp.update_targnets_every
         self.learning_steps = argp.learning_steps
@@ -75,24 +76,24 @@ class Learner:
             behaviour_log_pr = behaviour_log_pr.to(self.device)
 
             # Q(a_t, s_t)
-            Q = self.critic.forward(actions, states)
+            batch_Q = self.critic(torch.cat([actions / 2, states], dim=-1))
 
             # Q_target(a_t, s_t)
-            target_Q = self.target_critic.forward(actions, states)
+            target_Q = self.target_critic(torch.cat([actions / 2, states], dim=-1))
 
             # Compute 𝔼_π_target [Q(s_t,•)] with a ~ π_target(•|s_t), log(π_target(a|s)) with 1 sample
-            mean, log_std = self.target_actor.forward(states)
+            mean, log_std = self.target_actor(states)
             mean, log_std = mean.to(self.device), log_std.to(self.device)
 
             action_sample, _ = self.target_actor.action_sample(mean, log_std)
             # action_sample = torch.tanh(mean)
-            expected_target_Q = self.target_critic.forward(action_sample, states)
+            expected_target_Q = self.target_critic(torch.cat([action_sample / 2, states], dim=-1))
 
             # log(π_target(a_t | s_t))
-            target_action_log_prob = self.target_actor.get_log_prob(actions, mean, log_std)
+            target_action_log_prob = self.target_actor.get_log_prob(actions=actions, mean=mean, log_std=log_std)
 
             # a ~ π(•|s_t), log(π(a|s_t))
-            current_mean, current_log_std = self.actor.forward(states)
+            current_mean, current_log_std = self.actor(states)
             current_actions, current_action_log_prob = self.actor.action_sample(current_mean, current_log_std)
             current_actions.to(self.device)
 
@@ -101,34 +102,34 @@ class Learner:
             self.actor.zero_grad()
 
             # Critic update
-            critic_loss = self.critic_loss.forward(Q=Q,
-                                                   expected_target_Q=expected_target_Q,
-                                                   target_Q=target_Q,
-                                                   rewards=rewards,
-                                                   target_policy_probs=target_action_log_prob,
-                                                   behaviour_policy_probs=behaviour_log_pr,
-                                                   logger=self.logger)
-            critic_loss.backward(retain_graph=True)
+            critic_loss = self.critic_loss(Q=batch_Q,
+                                           expected_target_Q=expected_target_Q,
+                                           target_Q=target_Q,
+                                           rewards=rewards,
+                                           target_policy_probs=target_action_log_prob,
+                                           behaviour_policy_probs=behaviour_log_pr,
+                                           logger=self.logger)
 
-            # if self.global_gradient_norm != -1:
-            #     torch.nn.utils.clip_grad_norm_(self.critic.parameters(), self.global_gradient_norm)
-            #
-            # self.critic_opt.step()
+            self.critic.zero_grad()
+            # critic_loss.backward(retain_graph=True)
+            critic_loss.backward()
+            if self.global_gradient_norm != -1:
+                clip_grad_norm_(self.critic.parameters(), self.global_gradient_norm)
+            self.critic_opt.step()
+
+            # Q(a, s_t)
+            current_Q = self.critic(torch.cat([current_actions / 2, states], dim=-1))
+
+            # print("1", self.critic.grad_norm)
 
             # Actor update
-            # Q(a, s_t)
-            current_Q = self.critic.forward(current_actions, states)
-
-            actor_loss = self.actor_loss.forward(Q=current_Q,
-                                                 action_log_prob=current_action_log_prob.unsqueeze(-1))
+            actor_loss = self.actor_loss(Q=current_Q, action_log_prob=current_action_log_prob.unsqueeze(-1))
+            self.actor.zero_grad()
             actor_loss.backward()
-
             if self.global_gradient_norm != -1:
-                torch.nn.utils.clip_grad_norm_(self.actor.parameters(), self.global_gradient_norm)
-                torch.nn.utils.clip_grad_norm_(self.critic.parameters(), self.global_gradient_norm)
-
-            self.critic_opt.step()
+                clip_grad_norm_(self.actor.parameters(), self.global_gradient_norm)
             self.actor_opt.step()
+            # print("2", self.critic.grad_norm)
 
             # Keep track of different values
             if self.logging and i % self.log_every == 0:
@@ -136,12 +137,12 @@ class Learner:
                 self.logger.add_scalar(scalar_value=critic_loss.item(), tag="Loss/Critic_loss")
                 self.logger.add_scalar(scalar_value=current_log_std.exp().mean(), tag="Statistics/Action_std_mean")
                 self.logger.add_scalar(scalar_value=current_log_std.exp().std(), tag="Statistics/Action_std_std")
-                self.logger.add_scalar(scalar_value=Q.mean(), tag="Statistics/Q")
+                self.logger.add_scalar(scalar_value=batch_Q.mean(), tag="Statistics/Q")
 
-                self.logger.add_scalar(scalar_value=self.critic.param_norm, tag="Critic/param norm")
-                self.logger.add_scalar(scalar_value=self.critic.grad_norm, tag="Critic/grad norm")
-                self.logger.add_scalar(scalar_value=self.actor.param_norm, tag="Actor/param norm")
-                self.logger.add_scalar(scalar_value=self.actor.grad_norm, tag="Actor/grad norm")
+                # self.logger.add_scalar(scalar_value=self.critic.param_norm, tag="Critic/param norm")
+                # self.logger.add_scalar(scalar_value=self.critic.grad_norm, tag="Critic/grad norm")
+                # self.logger.add_scalar(scalar_value=self.actor.param_norm, tag="Actor/param norm")
+                # self.logger.add_scalar(scalar_value=self.actor.grad_norm, tag="Actor/grad norm")
 
                 self.logger.add_histogram(values=current_mean, tag="Statistics/Action_mean")
                 self.logger.add_histogram(values=rewards.sum(dim=-1), tag="Cumm Reward/Action_mean")

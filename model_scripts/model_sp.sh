@@ -2,13 +2,13 @@ python3 ../sp_carl/main.py \
 --num_worker=1 \
 --batch_size=1 \
 --update_targnets_every=100 \
---learning_steps=800 \
+--learning_steps=400 \
 --smoothing_coefficient=1 \
 --reward_scale=1 \
 --actor_lr=2e-4 \
 --critic_lr=2e-4 \
 --init_std=1 \
---global_gradient_norm=-1 \
+--global_gradient_norm=0.5 \
 --entropy_reg=0 \
---replay_buffer_size=1000 \
---num_trajectories=100  \
+--replay_buffer_size=10000 \
+--num_trajectories=20  \

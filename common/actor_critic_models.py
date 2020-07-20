@@ -67,12 +67,12 @@ class Base(torch.nn.Module):
             p_norm += params.norm()
         return p_norm
 
-    @property
-    def grad_norm(self):
-        g_norm = 0
-        for params in self.parameters():
-            g_norm += params.grad.norm()
-        return g_norm
+    # @property
+    # def grad_norm(self):
+    #     g_norm = 0
+    #     for params in self.parameters():
+    #         g_norm += params.grad.norm()
+    #     return g_norm
 
     @staticmethod
     def init_weights(module: torch.nn.Module) -> None:
@@ -230,6 +230,5 @@ class Critic(Base):
         self.model = torch.nn.Sequential(*critic_modules)
         self.init_weights(self.model)
 
-    def forward(self, action, obs):
-        x = torch.cat([action / 2, obs], dim=-1)  # todo remove /2 by normalize_action()
+    def forward(self, x):
         return self.model(x)

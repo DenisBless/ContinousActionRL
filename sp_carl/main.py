@@ -14,6 +14,7 @@ from torch.utils.tensorboard import SummaryWriter
 from common.actor_critic_models import Actor, Critic
 from common.replay_buffer import SharedReplayBuffer
 from common.arg_parser import ArgParser
+from common.utils import get_hparam_dict
 from sp_carl.learner import Learner
 from sp_carl.sampler import Sampler
 from sp_carl.evaluator import Evaluator
@@ -56,13 +57,17 @@ if __name__ == '__main__':
     if not os.path.isdir(model_root_dir):
         os.mkdir(model_root_dir)
     model_dir = model_root_dir + datetime.datetime.now().strftime("%H_%M__%d_%m")
-    os.mkdir(model_dir)
+    if not os.path.isdir(model_dir):
+        os.mkdir(model_dir)
 
     lock = mp.Lock()
-    logger = SummaryWriter()
     args = parser.parse_args()
+    logger = SummaryWriter()
+    logger.add_hparams(get_hparam_dict(args), {'mean reward/mean reward': 0})
 
     actor = Actor(num_actions=NUM_ACTIONS, num_obs=NUM_OBSERVATIONS, log_std_init=np.log(args.init_std))
+
+    # logger.add_graph(actor, torch.zeros(3))
 
     actor.share_memory()
 
