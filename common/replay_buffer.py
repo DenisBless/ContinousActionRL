@@ -53,6 +53,7 @@ class SharedReplayBuffer(ReplayBuffer):
                  capacity: int,
                  batch_size: int,
                  lock: Lock):
+
         super(SharedReplayBuffer, self).__init__(num_obs, num_actions, trajectory_length, capacity, batch_size)
 
         self.lock = lock

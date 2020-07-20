@@ -62,17 +62,11 @@ class Base(torch.nn.Module):
 
     @property
     def param_norm(self):
-        p_norm = 0
-        for params in self.parameters():
-            p_norm += params.norm()
-        return p_norm
+        return torch.norm(torch.stack([torch.norm(p.detach()) for p in self.parameters()]))
 
-    # @property
-    # def grad_norm(self):
-    #     g_norm = 0
-    #     for params in self.parameters():
-    #         g_norm += params.grad.norm()
-    #     return g_norm
+    @property
+    def grad_norm(self):
+        return torch.norm(torch.stack([torch.norm(p.grad.detach()) for p in self.parameters()]))
 
     @staticmethod
     def init_weights(module: torch.nn.Module) -> None:

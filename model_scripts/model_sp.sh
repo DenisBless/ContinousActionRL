@@ -2,7 +2,7 @@ python3 ../sp_carl/main.py \
 --num_worker=1 \
 --batch_size=1 \
 --update_targnets_every=100 \
---learning_steps=400 \
+--learning_steps=800 \
 --smoothing_coefficient=1 \
 --reward_scale=1 \
 --actor_lr=2e-4 \

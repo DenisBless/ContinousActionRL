@@ -47,7 +47,6 @@ class Learner:
         self.global_gradient_norm = argp.global_gradient_norm
 
     def learn(self) -> None:
-
         """
         Calculates gradients w.r.t. the actor and the critic and sends them to a shared parameter server. Whenever
         the server has accumulated G gradients, the parameter of the shared critic and actor are updated and sent
@@ -65,9 +64,6 @@ class Learner:
             # Update the target networks
             if i % self.update_targnets_every == 0:
                 self.update_targnets(smoothing_coefficient=self.smoothing_coefficient)
-
-            self.actor.train()
-            self.critic.train()
 
             states, actions, rewards, behaviour_log_pr = self.replay_buffer.sample()
             states = states.to(self.device)
@@ -111,7 +107,6 @@ class Learner:
                                            logger=self.logger)
 
             self.critic.zero_grad()
-            # critic_loss.backward(retain_graph=True)
             critic_loss.backward()
             if self.global_gradient_norm != -1:
                 clip_grad_norm_(self.critic.parameters(), self.global_gradient_norm)
@@ -120,8 +115,6 @@ class Learner:
             # Q(a, s_t)
             current_Q = self.critic(torch.cat([current_actions / 2, states], dim=-1))
 
-            # print("1", self.critic.grad_norm)
-
             # Actor update
             actor_loss = self.actor_loss(Q=current_Q, action_log_prob=current_action_log_prob.unsqueeze(-1))
             self.actor.zero_grad()
@@ -129,7 +122,6 @@ class Learner:
             if self.global_gradient_norm != -1:
                 clip_grad_norm_(self.actor.parameters(), self.global_gradient_norm)
             self.actor_opt.step()
-            # print("2", self.critic.grad_norm)
 
             # Keep track of different values
             if self.logging and i % self.log_every == 0:

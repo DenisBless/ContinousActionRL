@@ -11,7 +11,7 @@ class ArgParser(ArgumentParser):
                           help='Number of workers training the agent in parallel.')
         self.add_argument('--num_grads', type=int, default=1,
                           help='Number of gradients collected before updating the networks.')
-        self.add_argument('--batch_size', type=int, default=1,
+        self.add_argument('--batch_size', type=int, default=20,
                           help='Number of trajectories in a batch.')
         self.add_argument('--update_targnets_every', type=int, default=10,
                           help='Number of learning steps before the target networks are updated.')
