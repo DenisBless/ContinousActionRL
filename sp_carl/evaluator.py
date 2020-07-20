@@ -19,7 +19,8 @@ class Evaluator:
         self.logger = logger
 
         # self.env = gym.make("Swimmer-v2")
-        self.env = gym.make("Pendulum-v0")
+        self.env = gym.make("Hopper-v2")
+        # self.env = gym.make("Pendulum-v0")
         # self.env = gym.make("HalfCheetah-v2")
 
     def eval(self):
