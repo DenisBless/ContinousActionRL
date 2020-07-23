@@ -60,23 +60,23 @@ class Retrace:
         assert Q.shape == target_Q.shape == expected_target_Q.shape == rewards.shape == target_policy_probs.shape == \
                behaviour_policy_probs.shape
 
-        T = Q.shape[0]  # total number of time steps in the trajectory
-
         rewards = rewards * self.reward_scale
 
         with torch.no_grad():
             # We don't want gradients from computing Q_ret, since:
             # ∇φ (Q - Q_ret)^2 ∝ (Q - Q_ret) * ∇φ Q
 
-            c_ret = self.calc_retrace_weights(target_policy_probs, behaviour_policy_probs)  # [1:]
+            c_ret = self.calc_retrace_weights(target_policy_probs, behaviour_policy_probs)
 
             Q_ret = torch.zeros_like(Q, device=self.device, dtype=torch.float)  # (B,T)
             if Q.dim() > 1:  # for batch learning
+                T = Q.shape[1]  # total number of time steps in the trajectory
                 Q_ret[:, -1] = target_Q[:, -1]
                 for t in reversed(range(1, T)):
                     Q_ret[:, t - 1] = rewards[:, t - 1] + gamma * c_ret[:, t] * (Q_ret[:, t] - target_Q[:, t]) + \
                                       gamma * expected_target_Q[:, t]
             else:
+                T = Q.shape[0]  # total number of time steps in the trajectory
                 Q_ret[-1] = target_Q[-1]
                 for t in reversed(range(1, T)):
                     Q_ret[t - 1] = rewards[t - 1] + gamma * c_ret[t] * (Q_ret[t] - target_Q[t]) + \
@@ -87,7 +87,7 @@ class Retrace:
                 # for t in range(T):
                 #     Q_ret_it[t] = target_Q[t]
                 #     for j in range(t, T - 1):
-                #         Q_ret_it[t] += (gamma ** (j - t)) * c_ret[t + 1:j].prod() * \
+                #         Q_ret_it[t] += (gamma ** (j - t)) * c_ret[t + 1:j + 1].prod() * \
                 #                     (rewards[j] + gamma * expected_target_Q[j + 1] - target_Q[j])
 
             if logger is not None:
@@ -124,7 +124,7 @@ class Retrace:
 
         assert not torch.isnan(log_retrace_weights).any(), "Error, a least one NaN value found in retrace weights."
         # return log_retrace_weights.exp()
-        return log_retrace_weights.exp().pow(1 / self.num_actions)
+        return log_retrace_weights.exp()
 
 
 class ActorLoss:
