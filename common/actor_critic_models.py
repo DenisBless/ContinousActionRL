@@ -2,6 +2,7 @@ import torch
 from gym.spaces import Box
 from typing import Tuple, List
 from torch.distributions.normal import Normal
+from torch.distributions.independent import Independent
 
 
 def normalize_actions(action: torch.Tensor, action_bounds: Box) -> torch.Tensor:
@@ -67,12 +68,12 @@ class Base(torch.nn.Module):
             p_norm += params.norm()
         return p_norm
 
-    # @property
-    # def grad_norm(self):
-    #     g_norm = 0
-    #     for params in self.parameters():
-    #         g_norm += params.grad.norm()
-    #     return g_norm
+    @property
+    def grad_norm(self):
+        g_norm = 0
+        for params in self.parameters():
+            g_norm += params.grad.norm()
+        return g_norm
 
     @staticmethod
     def init_weights(module: torch.nn.Module) -> None:
@@ -122,6 +123,7 @@ class Actor(Base):
         self.log_std = torch.nn.Parameter(torch.ones(self.action_dim) * self.log_std_init, requires_grad=True)
 
     def forward(self, obs: torch.Tensor) -> Tuple[torch.Tensor, torch.Tensor]:
+        # mean = self.model(torch.tensor(obs, dtype=torch.float))
         mean = self.model(obs)
         return mean, self.log_std.clamp(min=-3)  # Lower bound on the variance
 
@@ -142,11 +144,11 @@ class Actor(Base):
             action sample a = tanh(u) and log prob log π(a|s)
         """
         dist = self.normal_dist(mean, log_std)
-        normal_action = dist.rsample()  # rsample() employs reparameterization trick
-        action = torch.tanh(normal_action)
-        normal_log_prob = dist.log_prob(normal_action)
-        log_prob = torch.sum(normal_log_prob, dim=-1) - torch.sum(torch.log((1 - action.pow(2) + self.eps)), dim=-1)
-        return 2 * action, log_prob  # todo change to normalization
+        action = dist.rsample()  # rsample() employs reparameterization trick
+        # action = torch.tanh(normal_action)
+        log_prob = dist.log_prob(action).sum(axis=-1)
+        # log_prob = normal_log_prob - torch.sum(torch.log((1 - action.pow(2) + self.eps)), dim=-1)
+        return action, log_prob  # todo change to normalization
         # return action, log_prob
 
     def get_log_prob(self, actions: torch.Tensor, mean: torch.Tensor, log_std: torch.Tensor,
@@ -167,12 +169,13 @@ class Actor(Base):
         Returns:
             log π(a|s)
         """
-        actions = actions / 2  # todo use normalize instead
-        if normal_actions is None:
-            normal_actions = self.inverseTanh(actions)
+        # actions = actions / 2  # todo use normalize instead
+        # if normal_actions is None:
+        #     normal_actions = self.inverseTanh(actions)
+        normal_actions = actions
 
-        normal_log_probs = self.normal_dist(mean, log_std).log_prob(normal_actions)
-        log_probs = torch.sum(normal_log_probs, dim=-1) - torch.sum(torch.log(1 - actions.pow(2) + self.eps), dim=-1)
+        log_probs = self.normal_dist(mean, log_std).log_prob(normal_actions).sum(axis=-1)
+        # log_probs = normal_log_probs - torch.sum(torch.log(1 - actions.pow(2) + self.eps), dim=-1)
         assert not torch.isnan(log_probs).any()
         return log_probs
 

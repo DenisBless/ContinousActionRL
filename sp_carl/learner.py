@@ -45,6 +45,7 @@ class Learner:
         self.learning_steps = argp.learning_steps
         self.smoothing_coefficient = argp.smoothing_coefficient
         self.global_gradient_norm = argp.global_gradient_norm
+        self.n_iter = 0
 
     def learn(self) -> None:
 
@@ -57,29 +58,26 @@ class Learner:
         Returns:
             No return value
         """
-        self.actor.train()
-        self.critic.train()
+        # self.actor.train()
+        # self.critic.train()
 
         for i in range(self.learning_steps):
-
-            # Update the target networks
-            if i % self.update_targnets_every == 0:
-                self.update_targnets(smoothing_coefficient=self.smoothing_coefficient)
 
             self.actor.train()
             self.critic.train()
 
-            states, actions, rewards, behaviour_log_pr = self.replay_buffer.sample()
+            states, actions, rewards, behaviour_log_pr, dones = self.replay_buffer.sample()
             states = states.to(self.device)
             actions = actions.to(self.device)
             rewards = rewards.to(self.device)
             behaviour_log_pr = behaviour_log_pr.to(self.device)
+            dones = dones.to(self.device)
 
             # Q(a_t, s_t)
-            batch_Q = self.critic(torch.cat([actions / 2, states], dim=-1))
+            batch_Q = self.critic(torch.cat([actions, states], dim=-1))
 
             # Q_target(a_t, s_t)
-            target_Q = self.target_critic(torch.cat([actions / 2, states], dim=-1))
+            target_Q = self.target_critic(torch.cat([actions, states], dim=-1))
 
             # Compute 𝔼_π_target [Q(s_t,•)] with a ~ π_target(•|s_t), log(π_target(a|s)) with 1 sample
             mean, log_std = self.target_actor(states)
@@ -87,7 +85,7 @@ class Learner:
 
             action_sample, _ = self.target_actor.action_sample(mean, log_std)
             # action_sample = torch.tanh(mean)
-            expected_target_Q = self.target_critic(torch.cat([action_sample / 2, states], dim=-1))
+            expected_target_Q = self.target_critic(torch.cat([action_sample, states], dim=-1))
 
             # log(π_target(a_t | s_t))
             target_action_log_prob = self.target_actor.get_log_prob(actions=actions, mean=mean, log_std=log_std)
@@ -97,10 +95,6 @@ class Learner:
             current_actions, current_action_log_prob = self.actor.action_sample(current_mean, current_log_std)
             current_actions.to(self.device)
 
-            # Reset the gradients
-            self.critic.zero_grad()
-            self.actor.zero_grad()
-
             # Critic update
             critic_loss = self.critic_loss(Q=batch_Q,
                                            expected_target_Q=expected_target_Q,
@@ -108,46 +102,67 @@ class Learner:
                                            rewards=rewards,
                                            target_policy_probs=target_action_log_prob,
                                            behaviour_policy_probs=behaviour_log_pr,
-                                           logger=self.logger)
+                                           dones=dones,
+                                           logger=self.logger,
+                                           n_iter=self.n_iter)
 
-            self.critic.zero_grad()
-            # critic_loss.backward(retain_graph=True)
-            critic_loss.backward()
-            if self.global_gradient_norm != -1:
-                clip_grad_norm_(self.critic.parameters(), self.global_gradient_norm)
-            self.critic_opt.step()
-
-            # Q(a, s_t)
-            current_Q = self.critic(torch.cat([current_actions / 2, states], dim=-1))
+            # # Q(a, s_t)
+            current_Q = self.critic(torch.cat([current_actions, states], dim=-1))
 
             # print("1", self.critic.grad_norm)
 
             # Actor update
-            actor_loss = self.actor_loss(Q=current_Q, action_log_prob=current_action_log_prob.unsqueeze(-1))
-            self.actor.zero_grad()
-            actor_loss.backward()
+            actor_loss = self.actor_loss(Q=current_Q.squeeze(),
+                                         action_log_prob=current_action_log_prob,
+                                         dones=dones)
+
+            # Reset the gradients
+            self.critic_opt.zero_grad()
+            # self.actor_opt.zero_grad()
+
+            # self.critic.zero_grad()
+            # self.actor.zero_grad()
+
+            # self.critic.zero_grad()
+            # critic_loss.backward(retain_graph=True)
+            critic_loss.backward()
             if self.global_gradient_norm != -1:
-                clip_grad_norm_(self.actor.parameters(), self.global_gradient_norm)
-            self.actor_opt.step()
+                clip_grad_norm_(self.critic.parameters(), self.global_gradient_norm)
+
+            # self.actor.zero_grad()
+            # actor_loss.backward()
+            # if self.global_gradient_norm != -1:
+            #     clip_grad_norm_(self.actor.parameters(), self.global_gradient_norm)
+
+            self.critic_opt.step()
+            # self.actor_opt.step()
+
             # print("2", self.critic.grad_norm)
 
             # Keep track of different values
             if self.logging and i % self.log_every == 0:
-                self.logger.add_scalar(scalar_value=actor_loss.item(), tag="Loss/Actor_loss")
-                self.logger.add_scalar(scalar_value=critic_loss.item(), tag="Loss/Critic_loss")
-                self.logger.add_scalar(scalar_value=current_log_std.exp().mean(), tag="Statistics/Action_std_mean")
-                self.logger.add_scalar(scalar_value=current_log_std.exp().std(), tag="Statistics/Action_std_std")
-                self.logger.add_scalar(scalar_value=batch_Q.mean(), tag="Statistics/Q")
+                self.logger.add_scalar(scalar_value=actor_loss.item(), tag="Loss/Actor_loss", global_step=self.n_iter)
+                self.logger.add_scalar(scalar_value=critic_loss.item(), tag="Loss/Critic_loss", global_step=self.n_iter)
 
-                # self.logger.add_scalar(scalar_value=self.critic.param_norm, tag="Critic/param norm")
-                # self.logger.add_scalar(scalar_value=self.critic.grad_norm, tag="Critic/grad norm")
-                # self.logger.add_scalar(scalar_value=self.actor.param_norm, tag="Actor/param norm")
-                # self.logger.add_scalar(scalar_value=self.actor.grad_norm, tag="Actor/grad norm")
+                self.logger.add_scalar(scalar_value=current_log_std.exp().mean().item(), tag="Statistics/Action_std_mean", global_step=self.n_iter)
+                self.logger.add_scalar(scalar_value=current_log_std.exp().std().item(), tag="Statistics/Action_std_std", global_step=self.n_iter)
+                self.logger.add_scalar(scalar_value=batch_Q.mean().item(), tag="Statistics/Q", global_step=self.n_iter)
+                self.logger.add_scalar(scalar_value=self.actor.log_std[0].item(), tag="Statistics/log_std_0", global_step=self.n_iter)
 
-                self.logger.add_histogram(values=current_mean, tag="Statistics/Action_mean")
-                self.logger.add_histogram(values=rewards.sum(dim=-1), tag="Cumm Reward/Action_mean")
+                self.logger.add_scalar(scalar_value=self.critic.param_norm, tag="Critic/param norm", global_step=self.n_iter)
+                self.logger.add_scalar(scalar_value=self.critic.grad_norm, tag="Critic/grad norm", global_step=self.n_iter)
+                # self.logger.add_scalar(scalar_value=self.actor.param_norm, tag="Actor/param norm", global_step=self.n_iter)
+                # self.logger.add_scalar(scalar_value=self.actor.grad_norm, tag="Actor/grad norm", global_step=self.n_iter)
+
+                self.logger.add_histogram(values=current_mean, tag="Statistics/Action_mean", global_step=self.n_iter)
+                self.logger.add_histogram(values=rewards.sum(axis=-1), tag="Cumulative Reward/Rewards_mean", global_step=self.n_iter)
                 # print(current_mean[:10])
-                self.logger.add_histogram(values=current_actions, tag="Statistics/Action")
+                self.logger.add_histogram(values=current_actions, tag="Statistics/Action", global_step=self.n_iter)
+
+            self.n_iter += 1
+        # Update the target networks
+        if self.n_iter % self.update_targnets_every == 0:
+            self.update_targnets(smoothing_coefficient=self.smoothing_coefficient)
 
     def update_targnets(self, smoothing_coefficient=1.) -> None:
         """

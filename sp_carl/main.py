@@ -8,6 +8,8 @@ import torch
 import time
 import os.path
 from os import path
+import gym
+import gym_point
 
 import torch.multiprocessing as mp
 from torch.utils.tensorboard import SummaryWriter
@@ -25,7 +27,7 @@ CUDA = 'cuda:0'
 SAVE_MODEL_EVERY = 10
 parser = ArgParser()
 
-# Swimmer
+# # Swimmer
 # NUM_ACTIONS = 2
 # NUM_OBSERVATIONS = 8
 # ACTION_SPACE = Box(low=np.array([-1., -1.]),
@@ -33,20 +35,40 @@ parser = ArgParser()
 # OBS_SPACE = None  # observation space is unbounded
 # EPISODE_LENGTH = 1000
 
-# Pendulum
-NUM_ACTIONS = 1
-NUM_OBSERVATIONS = 3
-ACTION_SPACE = Box(low=np.array([-2.]),
-                   high=np.array([2.]))
-OBS_SPACE = Box(low=np.array([-1., -1., -8.]),
-                high=np.array([1., 1., 8.]))
-EPISODE_LENGTH = 200
+# Hopper
+# NUM_ACTIONS = 3
+# NUM_OBSERVATIONS = 11
+# ACTION_SPACE = Box(low=np.array([-1., -1., -1]),
+#                    high=np.array([1., 1., 1.]))
+# OBS_SPACE = None  # observation space is unbounded
+# EPISODE_LENGTH = 1000
+
+# # Pendulum
+# NUM_ACTIONS = 1
+# NUM_OBSERVATIONS = 3
+# ACTION_SPACE = Box(low=np.array([-2.]),
+#                    high=np.array([2.]))
+# OBS_SPACE = Box(low=np.array([-1., -1., -8.]),
+#                 high=np.array([1., 1., 8.]))
+# EPISODE_LENGTH = 200
+
+# Point Env
+NUM_ACTIONS = 2
+NUM_OBSERVATIONS = 2
+ACTION_SPACE = Box(low=np.array([-1., -1.]),
+                   high=np.array([1., 1.]))
+OBS_SPACE = Box(low=np.array([-1., -1.]),
+                high=np.array([1., 1.]))
+EPISODE_LENGTH = 80
 
 
 def work(replay_buffer, actor, parser_args):
+    env = gym.make("PointEnv-v0")
+    # env = gym.make("Hopper-v2")
     worker = Sampler(replay_buffer=replay_buffer,
                      actor=actor,
-                     argp=parser_args)
+                     argp=parser_args,
+                     env=env)
     worker.run()
 
 
@@ -91,7 +113,10 @@ if __name__ == '__main__':
                       argp=args,
                       logger=logger)
 
-    evaluator = Evaluator(actor=actor, argp=args, logger=logger)
+    env = gym.make("PointEnv-v0")
+    # env = gym.make("Swimmer-v2")
+    # env = gym.make("Hopper-v2")
+    evaluator = Evaluator(actor=actor, argp=args, logger=logger, env=env, render=False)
 
     n = 0
     while n < args.num_runs:
@@ -131,7 +156,7 @@ if __name__ == '__main__':
 
         print("Learning Nr. ", n + 1, "finished after ", time.time() - t2)
 
-        evaluator.eval()
+        evaluator.eval(n)
 
         n += 1
 

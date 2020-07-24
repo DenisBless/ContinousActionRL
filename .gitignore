@@ -13,3 +13,5 @@ continous_action_RL/models_pendulum_V0
 /models/*
 */models/*
 /carl2/
+.idea
+

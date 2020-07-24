@@ -14,6 +14,7 @@ class ReplayBuffer(object):
         self.action_memory = torch.zeros([capacity, trajectory_length, num_actions], dtype=torch.float32)
         self.reward_memory = torch.zeros([capacity, trajectory_length], dtype=torch.float32)
         self.log_prob_memory = torch.zeros([capacity, trajectory_length], dtype=torch.float32)
+        self.dones_memory = torch.zeros([capacity, trajectory_length], dtype=torch.int32)
 
         self.position = torch.tensor(0)
         self.full = torch.tensor(0)
@@ -24,13 +25,15 @@ class ReplayBuffer(object):
         else:
             idx = random.sample(range(self.capacity), self.batch_size)
         return self.state_memory[idx].squeeze(dim=0), self.action_memory[idx].squeeze(dim=0), \
-               self.reward_memory[idx].squeeze(dim=0), self.log_prob_memory[idx].squeeze(dim=0)
+               self.reward_memory[idx].squeeze(dim=0), self.log_prob_memory[idx].squeeze(dim=0), \
+               self.dones_memory[idx].squeeze(dim=0)
 
-    def push(self, states, actions, rewards, log_probs) -> None:
+    def push(self, states, actions, rewards, log_probs, dones) -> None:
         self.state_memory[self.position] = states
         self.action_memory[self.position] = actions
         self.reward_memory[self.position] = rewards
         self.log_prob_memory[self.position] = log_probs
+        self.dones_memory[self.position] = dones
 
         self.position += 1
 
@@ -60,16 +63,17 @@ class SharedReplayBuffer(ReplayBuffer):
         self.action_memory.share_memory_()
         self.reward_memory.share_memory_()
         self.log_prob_memory.share_memory_()
+        self.dones_memory.share_memory_()
 
         self.position.share_memory_()
         self.full.share_memory_()
 
-    def push(self, states, actions, rewards, log_probs) -> None:
+    def push(self, states, actions, rewards, log_probs, dones) -> None:
         with self.lock:
             assert self.position.is_shared()
             assert self.state_memory.is_shared()
 
-            super().push(states, actions, rewards, log_probs)
+            super().push(states, actions, rewards, log_probs, dones)
 
     def sample(self):
         with self.lock:

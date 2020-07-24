@@ -17,8 +17,10 @@ class Retrace:
                  rewards,
                  target_policy_probs,
                  behaviour_policy_probs,
+                 dones,
                  gamma=0.99,
-                 logger=None):
+                 logger=None,
+                 n_iter=None):
         """
         Implementation of Retrace loss ((http://arxiv.org/abs/1606.02647)) in PyTorch.
 
@@ -62,28 +64,54 @@ class Retrace:
 
         rewards = rewards * self.reward_scale
 
+        Q = Q * (1 - dones)
+
         with torch.no_grad():
             # We don't want gradients from computing Q_ret, since:
             # ∇φ (Q - Q_ret)^2 ∝ (Q - Q_ret) * ∇φ Q
 
             c_ret = self.calc_retrace_weights(target_policy_probs, behaviour_policy_probs)
 
-            Q_ret = torch.zeros_like(Q, device=self.device, dtype=torch.float)  # (B,T)
+            # Q_ret = torch.zeros_like(Q, device=self.device, dtype=torch.float)  # (B,T)
+            # Q_ret = torch.zeros(T)
+            # Q_done = torch.zeros_like(Q, device=self.device, dtype=torch.float)  # (B,T)
+
             if Q.dim() > 1:  # for batch learning
-                T = Q.shape[1]  # total number of time steps in the trajectory
-                Q_ret[:, -1] = target_Q[:, -1]
-                for t in reversed(range(1, T)):
-                    Q_ret[:, t - 1] = rewards[:, t - 1] + gamma * c_ret[:, t] * (Q_ret[:, t] - target_Q[:, t]) + \
-                                      gamma * expected_target_Q[:, t]
+                Q_ret = torch.zeros_like(Q, device=self.device, dtype=torch.float)  # (B,T)
+                for i in range(Q.shape[0]):
+                    # T = Q.shape[1]  # total number of time steps in the trajectory
+                    T = dones[i].cpu().numpy().argmax() + 1
+                    # T = 10
+                    # Q[i, T-1:] = 0
+                    # Q_ret = torch.zeros(T, device=self.device, dtype=torch.float)
+                    Q_ret[i, T - 1] = target_Q[i, T - 1]
+                    for t in reversed(range(1, T)):
+                        Q_ret[i, t - 1] = rewards[i, t - 1] + gamma * c_ret[i, t] * (Q_ret[i, t] - target_Q[i, t]) + \
+                                          gamma * expected_target_Q[i, t]
+
+                # # iterative version
+                Q_ret_it = torch.zeros_like(Q_ret)
+                for i in range(Q.shape[0]):
+                    T = dones[i].cpu().numpy().argmax() + 1
+                    # Q_ret_it = torch.zeros(T, device=self.device, dtype=torch.float)
+                    for t in range(T):
+                        Q_ret_it[i, t] = target_Q[i, t]
+                        for j in range(t, T - 1):
+                            Q_ret_it[i, t] += (gamma ** (j - t)) * c_ret[i, t + 1:j + 1].prod() * \
+                                        (rewards[i, j] + gamma * expected_target_Q[i, j + 1] - target_Q[i, j])
             else:
-                T = Q.shape[0]  # total number of time steps in the trajectory
+                # T = Q.shape[0]  # total number of time steps in the trajectory
+                T = dones.cpu().numpy().argmax() + 1
+                Q_ret = torch.zeros(T, device=self.device, dtype=torch.float)
                 Q_ret[-1] = target_Q[-1]
                 for t in reversed(range(1, T)):
                     Q_ret[t - 1] = rewards[t - 1] + gamma * c_ret[t] * (Q_ret[t] - target_Q[t]) + \
                                    gamma * expected_target_Q[t]
 
-                # iterative version
-                # Q_ret_it = torch.zeros_like(Q_ret)
+                # # iterative version
+                # # Q_ret_it = torch.zeros_like(Q_ret)
+                # T = dones.cpu().numpy().argmax() + 1
+                # Q_ret_it = torch.zeros(T, device=self.device, dtype=torch.float)
                 # for t in range(T):
                 #     Q_ret_it[t] = target_Q[t]
                 #     for j in range(t, T - 1):
@@ -91,16 +119,18 @@ class Retrace:
                 #                     (rewards[j] + gamma * expected_target_Q[j + 1] - target_Q[j])
 
             if logger is not None:
-                logger.add_histogram(tag="retrace/ratio", values=c_ret)
-                logger.add_histogram(tag="retrace/behaviour", values=behaviour_policy_probs)
-                logger.add_histogram(tag="retrace/target", values=target_policy_probs)
+                logger.add_histogram(tag="retrace/ratio", values=c_ret, global_step=n_iter)
+                logger.add_histogram(tag="retrace/behaviour", values=behaviour_policy_probs, global_step=n_iter)
+                logger.add_histogram(tag="retrace/target", values=target_policy_probs, global_step=n_iter)
+                logger.add_histogram(tag="retrace/Qret mean", values=Q_ret, global_step=n_iter)
 
-                logger.add_scalar(tag="retace/Qret-targetQ mean", scalar_value=(Q_ret - target_Q).mean())
-                logger.add_scalar(tag="retace/Qret-targetQ std", scalar_value=(Q_ret - target_Q).std())
-                logger.add_scalar(tag="retrace/E[targetQ] mean", scalar_value=expected_target_Q.mean())
-                logger.add_scalar(tag="retrace/E[targetQ] std", scalar_value=expected_target_Q.std())
+                logger.add_scalar(tag="retrace/Qret-targetQ mean", scalar_value=(Q_ret - target_Q).mean(), global_step=n_iter)
+                logger.add_scalar(tag="retrace/Qret-targetQ std", scalar_value=(Q_ret - target_Q).std(), global_step=n_iter)
+                logger.add_scalar(tag="retrace/E[targetQ] mean", scalar_value=expected_target_Q.mean(), global_step=n_iter)
+                logger.add_scalar(tag="retrace/E[targetQ] std", scalar_value=expected_target_Q.std(), global_step=n_iter)
 
-        return F.mse_loss(Q, Q_ret)
+        return (Q - Q_ret).square().sum().div((1 - dones).sum())
+        # return F.mse_loss(Q, Q_ret)
 
     def calc_retrace_weights(self, target_policy_logprob, behaviour_policy_logprob):
         """
@@ -136,7 +166,7 @@ class ActorLoss:
         """
         self.alpha = alpha
 
-    def __call__(self, Q, action_log_prob):
+    def __call__(self, Q, action_log_prob, dones):
         """
         Computes the loss of the actor according to
         L = 𝔼_π [Q(a,s) - α log(π(a|s)]
@@ -148,7 +178,9 @@ class ActorLoss:
             Scalar actor loss value
         """
         assert Q.dim() == action_log_prob.dim()
-        return (self.alpha * action_log_prob - Q).mean()
+        valid_Q = Q * (1 - dones)
+        valid_log_prob = action_log_prob * (1 - dones)
+        return (self.alpha * valid_log_prob - valid_Q).sum().div((1 - dones).sum())
         # return - Q.mean()
 
     @staticmethod
