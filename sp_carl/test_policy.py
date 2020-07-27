@@ -44,40 +44,40 @@ parser = ArgParser()
 #                 high=np.array([1., 1., 8.]))
 # EPISODE_LENGTH = 200
 
-# # Point Env
-# NUM_ACTIONS = 2
-# NUM_OBSERVATIONS = 2
-# ACTION_SPACE = Box(low=np.array([-1., -1.]),
-#                    high=np.array([1., 1.]))
-# OBS_SPACE = Box(low=np.array([-1., -1.]),
-#                 high=np.array([1., 1.]))
-# EPISODE_LENGTH = 80
+# Point Env
+NUM_ACTIONS = 2
+NUM_OBSERVATIONS = 2
+ACTION_SPACE = Box(low=np.array([-1., -1.]),
+                   high=np.array([1., 1.]))
+OBS_SPACE = Box(low=np.array([-1., -1.]),
+                high=np.array([1., 1.]))
+EPISODE_LENGTH = 80
 
-# Hopper
-NUM_ACTIONS = 3
-NUM_OBSERVATIONS = 11
-ACTION_SPACE = Box(low=np.array([-1., -1., -1]),
-                   high=np.array([1., 1., 1.]))
-OBS_SPACE = None  # observation space is unbounded
-EPISODE_LENGTH = 1000
+# # Hopper
+# NUM_ACTIONS = 3
+# NUM_OBSERVATIONS = 11
+# ACTION_SPACE = Box(low=np.array([-1., -1., -1]),
+#                    high=np.array([1., 1., 1.]))
+# OBS_SPACE = None  # observation space is unbounded
+# EPISODE_LENGTH = 1000
 
 
 if __name__ == '__main__':
-    device = CUDA
+    device = CPU
 
     model_root_dir = str(pathlib.Path(__file__).resolve().parents[1]) + "/models/"
-    model_save_path = model_root_dir + "18_51__24_07/"
+    model_save_path = model_root_dir + "00_38__25_07/"
 
     args = parser.parse_args()
 
     actor = Actor(num_actions=NUM_ACTIONS, num_obs=NUM_OBSERVATIONS, log_std_init=np.log(args.init_std))
-    actor.load_state_dict(torch.load(model_save_path + "actor_40"))
+    actor.load_state_dict(torch.load(model_save_path + "actor_620"))
 
     # logger.add_graph(actor, torch.zeros(3))
 
-    # env = gym.make("PointEnv-v0")
+    env = gym.make("PointEnv-v0")
     # env = gym.make("Swimmer-v2")
-    env = gym.make("Hopper-v2")
+    # env = gym.make("Hopper-v2")
     evaluator = Evaluator(actor=actor, argp=args, logger=None, env=env, render=True)
 
     actor = actor.to(device)

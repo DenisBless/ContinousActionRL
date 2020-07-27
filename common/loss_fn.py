@@ -1,6 +1,7 @@
 import torch
 import torch.nn.functional as F
 from torch.multiprocessing import current_process
+from common.utils import t2n
 
 
 class Retrace:
@@ -64,7 +65,8 @@ class Retrace:
 
         rewards = rewards * self.reward_scale
 
-        Q = Q * (1 - dones)
+        # Q = Q * (1 - dones)
+        Q = Q[:, :-10]
 
         with torch.no_grad():
             # We don't want gradients from computing Q_ret, since:
@@ -76,32 +78,53 @@ class Retrace:
             # Q_ret = torch.zeros(T)
             # Q_done = torch.zeros_like(Q, device=self.device, dtype=torch.float)  # (B,T)
 
+            T = 10
+
             if Q.dim() > 1:  # for batch learning
-                Q_ret = torch.zeros_like(Q, device=self.device, dtype=torch.float)  # (B,T)
-                for i in range(Q.shape[0]):
-                    # T = Q.shape[1]  # total number of time steps in the trajectory
-                    T = dones[i].cpu().numpy().argmax() + 1
-                    # T = 10
-                    # Q[i, T-1:] = 0
-                    # Q_ret = torch.zeros(T, device=self.device, dtype=torch.float)
-                    Q_ret[i, T - 1] = target_Q[i, T - 1]
-                    for t in reversed(range(1, T)):
-                        Q_ret[i, t - 1] = rewards[i, t - 1] + gamma * c_ret[i, t] * (Q_ret[i, t] - target_Q[i, t]) + \
-                                          gamma * expected_target_Q[i, t]
+                # Q_ret = torch.zeros_like(Q, device=self.device, dtype=torch.float)  # (B,T)
+                # for i in range(Q.shape[0]):
+                #     # T = Q.shape[1]  # total number of time steps in the trajectory
+                #     # T = dones[i].cpu().numpy().argmax() + 1
+                #     # T = 10
+                #     # Q[i, T-1:] = 0
+                #     # Q_ret = torch.zeros(T, device=self.device, dtype=torch.float)
+                #     # Q_ret[i, T - 1] = target_Q[i, T - 1]
+                #     # for t in reversed(range(1, T)):
+                #     #     Q_ret[i, t - 1] = rewards[i, t - 1] + gamma * c_ret[i, t] * (Q_ret[i, t] - target_Q[i, t]) + \
+                #     #                       gamma * expected_target_Q[i, t]
+                #     Q_ret[i, dones[i].argmax()] = target_Q[i, dones[i].argmax()]
+                #     for j in reversed(range(dones[i].argmax() + 1 - T)):
+                #         for t in reversed(range(j, j + T)):
+                #             Q_ret[i, t] = rewards[i, t] + gamma * c_ret[i, t + 1] * (Q_ret[i, t + 1] - target_Q[i, t + 1]) + \
+                #                               gamma * expected_target_Q[i, t + 1]
+
+                # iterative version
+                # Q_ret_it = torch.zeros_like(Q_ret)
+                # for i in range(Q.shape[0]):
+                #     T = dones[i].cpu().numpy().argmax() + 1
+                #     # Q_ret_it = torch.zeros(T, device=self.device, dtype=torch.float)
+                #     for t in range(T):
+                #         Q_ret_it[i, t] = target_Q[i, t]
+                #         for j in range(t, T - 1):
+                #             Q_ret_it[i, t] += (gamma ** (j - t)) * c_ret[i, t + 1:j + 1].prod() * \
+                #                         (rewards[i, j] + gamma * expected_target_Q[i, j + 1] - target_Q[i, j])
 
                 # # iterative version
-                Q_ret_it = torch.zeros_like(Q_ret)
+                Q_ret_it = torch.zeros_like(Q)
                 for i in range(Q.shape[0]):
-                    T = dones[i].cpu().numpy().argmax() + 1
+                    T = 10
+                    # for n in range(dones[i].argmax() + 1 - T):
                     # Q_ret_it = torch.zeros(T, device=self.device, dtype=torch.float)
-                    for t in range(T):
+                    for t in range((1 - dones[i]).sum() + 1 - T):
                         Q_ret_it[i, t] = target_Q[i, t]
-                        for j in range(t, T - 1):
+                        for j in range(t, t + T):
                             Q_ret_it[i, t] += (gamma ** (j - t)) * c_ret[i, t + 1:j + 1].prod() * \
                                         (rewards[i, j] + gamma * expected_target_Q[i, j + 1] - target_Q[i, j])
+
+
             else:
                 # T = Q.shape[0]  # total number of time steps in the trajectory
-                T = dones.cpu().numpy().argmax() + 1
+                T = (1 - dones).sum(axis=1)
                 Q_ret = torch.zeros(T, device=self.device, dtype=torch.float)
                 Q_ret[-1] = target_Q[-1]
                 for t in reversed(range(1, T)):
@@ -122,15 +145,15 @@ class Retrace:
                 logger.add_histogram(tag="retrace/ratio", values=c_ret, global_step=n_iter)
                 logger.add_histogram(tag="retrace/behaviour", values=behaviour_policy_probs, global_step=n_iter)
                 logger.add_histogram(tag="retrace/target", values=target_policy_probs, global_step=n_iter)
-                logger.add_histogram(tag="retrace/Qret mean", values=Q_ret, global_step=n_iter)
+                logger.add_histogram(tag="retrace/Qret mean", values=Q_ret_it, global_step=n_iter)
 
-                logger.add_scalar(tag="retrace/Qret-targetQ mean", scalar_value=(Q_ret - target_Q).mean(), global_step=n_iter)
-                logger.add_scalar(tag="retrace/Qret-targetQ std", scalar_value=(Q_ret - target_Q).std(), global_step=n_iter)
+                # logger.add_scalar(tag="retrace/Qret-targetQ mean", scalar_value=(Q_ret - target_Q).mean(), global_step=n_iter)
+                # logger.add_scalar(tag="retrace/Qret-targetQ std", scalar_value=(Q_ret - target_Q).std(), global_step=n_iter)
                 logger.add_scalar(tag="retrace/E[targetQ] mean", scalar_value=expected_target_Q.mean(), global_step=n_iter)
                 logger.add_scalar(tag="retrace/E[targetQ] std", scalar_value=expected_target_Q.std(), global_step=n_iter)
 
-        return (Q - Q_ret).square().sum().div((1 - dones).sum())
-        # return F.mse_loss(Q, Q_ret)
+        # return (Q - Q_ret_it).square().sum().div(Q.numel())
+        return F.mse_loss(Q, Q_ret_it)
 
     def calc_retrace_weights(self, target_policy_logprob, behaviour_policy_logprob):
         """
@@ -178,9 +201,13 @@ class ActorLoss:
             Scalar actor loss value
         """
         assert Q.dim() == action_log_prob.dim()
-        valid_Q = Q * (1 - dones)
-        valid_log_prob = action_log_prob * (1 - dones)
-        return (self.alpha * valid_log_prob - valid_Q).sum().div((1 - dones).sum())
+
+        # Q = Q[:, :-10]
+        # action_log_prob = action_log_prob[:, :-10]
+        # valid_Q = Q * (1 - dones)
+        # valid_log_prob = action_log_prob * (1 - dones)
+        # return (self.alpha * valid_log_prob - valid_Q).sum().div((1 - dones).sum())
+        return (self.alpha * action_log_prob - Q).mean()
         # return - Q.mean()
 
     @staticmethod

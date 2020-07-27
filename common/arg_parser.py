@@ -7,16 +7,20 @@ class ArgParser(ArgumentParser):
 
         # Algorithm parameter
         # parser.add_argument('--num_worker', type=int, default=os.cpu_count(),
-        self.add_argument('--num_worker', type=int, default=5,
+        self.add_argument('--num_worker', type=int, default=2,
                           help='Number of workers training the agent in parallel.')
+        self.add_argument('--num_trajectories', type=int, default=10,
+                          help='Number of trajectories sampled before entering the learning phase.')
+        self.add_argument('--learning_steps', type=int, default=10,
+                          help='Total number of learning timesteps before sampling trajectories.')
+        self.add_argument('--batch_size', type=int, default=4,
+                          help='Number of trajectories in a batch.')
         self.add_argument('--num_grads', type=int, default=1,
                           help='Number of gradients collected before updating the networks.')
-        self.add_argument('--batch_size', type=int, default=2,
-                          help='Number of trajectories in a batch.')
+
         self.add_argument('--update_targnets_every', type=int, default=1,
                           help='Number of learning steps before the target networks are updated.')
-        self.add_argument('--learning_steps', type=int, default=1000,
-                          help='Total number of learning timesteps before sampling trajectories.')
+
         self.add_argument('--num_runs', type=int, default=5000,
                           help='Number of learning iterations.')
         self.add_argument('--actor_lr', type=float, default=1e-4,
@@ -25,7 +29,7 @@ class ArgParser(ArgumentParser):
                           help='Learning rate for the critic network.')
         self.add_argument('--init_std', type=float, default=1,
                           help='Initial standard deviation of the actor.')
-        self.add_argument('--smoothing_coefficient', type=float, default=1,
+        self.add_argument('--smoothing_coefficient', type=float, default=0.001,
                           help='Decides how the target networks are updated. One corresponds to a hard updates, whereas'
                                ' values between zero and one result in exponential moving average updates.')
         self.add_argument('--reward_scale', type=int, default=1,
@@ -53,8 +57,7 @@ class ArgParser(ArgumentParser):
         #                     help='Length of a episode.')
         self.add_argument('--num_evals', type=int, default=1,
                           help='Number of trajectories used for evaluating the policy.')
-        self.add_argument('--num_trajectories', type=int, default=40,
-                          help='Number of trajectories sampled before entering the learning phase.')
+
         self.add_argument('--dt', type=float, default=1e-3,
                           help='Time between steps in the mujoco pyhsics simulation (in seconds).')
         self.add_argument('--percentage', type=float, default=2e-2,

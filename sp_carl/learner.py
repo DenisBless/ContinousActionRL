@@ -60,6 +60,7 @@ class Learner:
         """
         # self.actor.train()
         # self.critic.train()
+        # torch.autograd.set_detect_anomaly(True)
 
         for i in range(self.learning_steps):
 
@@ -75,6 +76,7 @@ class Learner:
 
             # Q(a_t, s_t)
             batch_Q = self.critic(torch.cat([actions, states], dim=-1))
+            test_Q = self.critic(torch.tensor([0., 0., 1., 1.]))
 
             # Q_target(a_t, s_t)
             target_Q = self.target_critic(torch.cat([actions, states], dim=-1))
@@ -106,6 +108,15 @@ class Learner:
                                            logger=self.logger,
                                            n_iter=self.n_iter)
 
+            # Reset the gradients
+            self.critic_opt.zero_grad()
+
+            critic_loss.backward()
+            if self.global_gradient_norm != -1:
+                clip_grad_norm_(self.critic.parameters(), self.global_gradient_norm)
+
+            self.critic_opt.step()
+
             # # Q(a, s_t)
             current_Q = self.critic(torch.cat([current_actions, states], dim=-1))
 
@@ -116,26 +127,13 @@ class Learner:
                                          action_log_prob=current_action_log_prob,
                                          dones=dones)
 
-            # Reset the gradients
-            self.critic_opt.zero_grad()
-            # self.actor_opt.zero_grad()
+            self.actor_opt.zero_grad()
 
-            # self.critic.zero_grad()
-            # self.actor.zero_grad()
-
-            # self.critic.zero_grad()
-            # critic_loss.backward(retain_graph=True)
-            critic_loss.backward()
+            actor_loss.backward()
             if self.global_gradient_norm != -1:
-                clip_grad_norm_(self.critic.parameters(), self.global_gradient_norm)
+                clip_grad_norm_(self.actor.parameters(), self.global_gradient_norm)
 
-            # self.actor.zero_grad()
-            # actor_loss.backward()
-            # if self.global_gradient_norm != -1:
-            #     clip_grad_norm_(self.actor.parameters(), self.global_gradient_norm)
-
-            self.critic_opt.step()
-            # self.actor_opt.step()
+            self.actor_opt.step()
 
             # print("2", self.critic.grad_norm)
 
@@ -147,12 +145,13 @@ class Learner:
                 self.logger.add_scalar(scalar_value=current_log_std.exp().mean().item(), tag="Statistics/Action_std_mean", global_step=self.n_iter)
                 self.logger.add_scalar(scalar_value=current_log_std.exp().std().item(), tag="Statistics/Action_std_std", global_step=self.n_iter)
                 self.logger.add_scalar(scalar_value=batch_Q.mean().item(), tag="Statistics/Q", global_step=self.n_iter)
+                self.logger.add_scalar(scalar_value=test_Q.item(), tag="Statistics/testQ", global_step=self.n_iter)
                 self.logger.add_scalar(scalar_value=self.actor.log_std[0].item(), tag="Statistics/log_std_0", global_step=self.n_iter)
 
                 self.logger.add_scalar(scalar_value=self.critic.param_norm, tag="Critic/param norm", global_step=self.n_iter)
                 self.logger.add_scalar(scalar_value=self.critic.grad_norm, tag="Critic/grad norm", global_step=self.n_iter)
-                # self.logger.add_scalar(scalar_value=self.actor.param_norm, tag="Actor/param norm", global_step=self.n_iter)
-                # self.logger.add_scalar(scalar_value=self.actor.grad_norm, tag="Actor/grad norm", global_step=self.n_iter)
+                self.logger.add_scalar(scalar_value=self.actor.param_norm, tag="Actor/param norm", global_step=self.n_iter)
+                self.logger.add_scalar(scalar_value=self.actor.grad_norm, tag="Actor/grad norm", global_step=self.n_iter)
 
                 self.logger.add_histogram(values=current_mean, tag="Statistics/Action_mean", global_step=self.n_iter)
                 self.logger.add_histogram(values=rewards.sum(axis=-1), tag="Cumulative Reward/Rewards_mean", global_step=self.n_iter)
@@ -160,9 +159,9 @@ class Learner:
                 self.logger.add_histogram(values=current_actions, tag="Statistics/Action", global_step=self.n_iter)
 
             self.n_iter += 1
-        # Update the target networks
-        if self.n_iter % self.update_targnets_every == 0:
-            self.update_targnets(smoothing_coefficient=self.smoothing_coefficient)
+            # Update the target networks
+            if self.n_iter % self.update_targnets_every == 0:
+                self.update_targnets(smoothing_coefficient=self.smoothing_coefficient)
 
     def update_targnets(self, smoothing_coefficient=1.) -> None:
         """

@@ -29,10 +29,12 @@ class Evaluator:
 
         for i in range(self.num_samples):
             rewards = []
+            obss = []
 
             obs = torch.tensor(self.env.reset(), dtype=torch.float).to(self.device)
             done = False
             while not done:
+                obss.append(obs)
                 mean, _ = self.actor.forward(obs)
                 action = mean.to(self.device)
                 # action, _ = self.actor.action_sample(mean, torch.ones_like(mean))

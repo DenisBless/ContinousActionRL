@@ -13,3 +13,5 @@ def get_hparam_dict(argp):
 def get_metric_dict(argp):
     return {'mean reward': ...,
             }
+
+t2n = lambda t: t.detach().numpy()
