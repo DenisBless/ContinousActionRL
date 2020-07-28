@@ -93,10 +93,6 @@ class Learner:
             current_actions, current_action_log_prob = self.actor.action_sample(current_mean, current_log_std)
             current_actions.to(self.device)
 
-            # Reset the gradients
-            self.critic.zero_grad()
-            self.actor.zero_grad()
-
             # Critic update
             critic_loss = self.critic_loss(Q=batch_Q,
                                            expected_target_Q=expected_target_Q,
@@ -106,7 +102,7 @@ class Learner:
                                            behaviour_policy_probs=behaviour_log_pr,
                                            logger=self.logger)
 
-            self.critic.zero_grad()
+            self.critic_opt.zero_grad()
             critic_loss.backward()
             if self.global_gradient_norm != -1:
                 clip_grad_norm_(self.critic.parameters(), self.global_gradient_norm)
@@ -117,7 +113,7 @@ class Learner:
 
             # Actor update
             actor_loss = self.actor_loss(Q=current_Q, action_log_prob=current_action_log_prob.unsqueeze(-1))
-            self.actor.zero_grad()
+            self.actor_opt.zero_grad()
             actor_loss.backward()
             if self.global_gradient_norm != -1:
                 clip_grad_norm_(self.actor.parameters(), self.global_gradient_norm)

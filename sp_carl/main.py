@@ -26,21 +26,21 @@ SAVE_MODEL_EVERY = 10
 parser = ArgParser()
 
 # Hopper
-NUM_ACTIONS = 3
-NUM_OBSERVATIONS = 11
-ACTION_SPACE = Box(low=np.array([-1., -1., -1]),
-                   high=np.array([1., 1., 1.]))
-OBS_SPACE = None  # observation space is unbounded
-EPISODE_LENGTH = 1000
+# NUM_ACTIONS = 3
+# NUM_OBSERVATIONS = 11
+# ACTION_SPACE = Box(low=np.array([-1., -1., -1]),
+#                    high=np.array([1., 1., 1.]))
+# OBS_SPACE = None  # observation space is unbounded
+# EPISODE_LENGTH = 1000
 
 
 # Swimmer
-# NUM_ACTIONS = 2
-# NUM_OBSERVATIONS = 8
-# ACTION_SPACE = Box(low=np.array([-1., -1.]),
-#                    high=np.array([1., 1.]))
-# OBS_SPACE = None  # observation space is unbounded
-# EPISODE_LENGTH = 1000
+NUM_ACTIONS = 2
+NUM_OBSERVATIONS = 8
+ACTION_SPACE = Box(low=np.array([-1., -1.]),
+                   high=np.array([1., 1.]))
+OBS_SPACE = None  # observation space is unbounded
+EPISODE_LENGTH = 1000
 
 # Pendulum
 # NUM_ACTIONS = 1

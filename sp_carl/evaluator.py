@@ -1,6 +1,5 @@
 import torch
 import gym
-from common.replay_buffer import SharedReplayBuffer
 
 
 class Evaluator:
@@ -18,8 +17,8 @@ class Evaluator:
 
         self.logger = logger
 
-        # self.env = gym.make("Swimmer-v2")
-        self.env = gym.make("Hopper-v2")
+        self.env = gym.make("Swimmer-v2")
+        # self.env = gym.make("Hopper-v2")
         # self.env = gym.make("Pendulum-v0")
         # self.env = gym.make("HalfCheetah-v2")
 
@@ -40,8 +39,9 @@ class Evaluator:
                 obs = next_obs
                 if self.render:
                     self.env.render()
-
+            print(sum(rewards) / len(rewards))
             r.append(sum(rewards) / len(rewards))
 
         if self.logger is not None:
             self.logger.add_scalar(scalar_value=max(r), tag="mean reward")
+            print(max(r))

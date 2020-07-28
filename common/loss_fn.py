@@ -121,10 +121,10 @@ class Retrace:
             + str(target_policy_logprob.shape) + " mean: " + str(behaviour_policy_logprob.shape)
 
         log_retrace_weights = (target_policy_logprob - behaviour_policy_logprob).clamp(max=0)
-
+        retrace_weights = log_retrace_weights.exp()
         assert not torch.isnan(log_retrace_weights).any(), "Error, a least one NaN value found in retrace weights."
         # return log_retrace_weights.exp()
-        return log_retrace_weights.exp().pow(1 / self.num_actions)
+        return retrace_weights
 
 
 class ActorLoss:
