@@ -15,7 +15,7 @@ parser = argparse.ArgumentParser(description='algorithm arguments')
 # parser.add_argument('--num_worker', type=int, default=os.cpu_count(),
 parser.add_argument('--num_workers', type=int, default=2,
                     help='Number of workers training the agent in parallel.')
-parser.add_argument('--num_grads', type=int, default=5,
+parser.add_argument('--num_grads', type=int, default=200,
                     help='Number of gradients collected before updating the networks.')
 parser.add_argument('--update_targnets_every', type=int, default=10,
                     help='Number of learning steps before the target networks are updated.')
@@ -110,7 +110,7 @@ def work(param_server, replay_buffer, parser_args, condition):
 
 
 if __name__ == '__main__':
-    os.environ['CUDA_VISIBLE_DEVICES'] = ""  # Disable CUDA
+    # os.environ['CUDA_VISIBLE_DEVICES'] = ""  # Disable CUDA
 
     cv = mp.Condition()
     args = parser.parse_args()
@@ -141,3 +141,11 @@ if __name__ == '__main__':
 
     else:
         raise ValueError("Error, the number of workers has to be positive.")
+
+
+# TODO:
+"""
+We have a bug: Even though we share the gradients of the actor and the critic, when adding gradients to them, 
+the threads are adding separate gradients. This can best be observed when setting the number of gradients to a large 
+number and uncomment the /G in the parameter server.
+"""

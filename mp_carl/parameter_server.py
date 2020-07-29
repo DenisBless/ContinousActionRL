@@ -62,6 +62,7 @@ class ParameterServer:
                 self.N.zero_()
             self.add_gradients(net=self.shared_actor, source_net=actor)
             self.N += 1
+            print(self.shared_critic.grad_norm)
             assert self.N.is_shared()
             if self.N >= self.G:
                 self.update_params()
@@ -71,15 +72,20 @@ class ParameterServer:
         """
         Add the gradients from the workers to
         Args:
-            source_actor: Worker (actor) which delivers gradients
-            source_critic: Worker (critic) which delivers gradients
+            source_net: Worker which delivers gradients
+            net: Receives gradients
 
         Returns:
             No return value
         """
-        for param, source_param in zip(net.parameters(), source_net.parameters()):
-            param.grad += source_param.grad / self.G
-            assert param.grad.is_shared()
+        try:
+            # for param, source_param in zip(net.parameters(), source_net.parameters()):
+            for param, source_param in zip(self.shared_critic.parameters(), source_net.parameters()):
+                param.grad.add_(source_param.grad)# / self.G todo!!!
+                assert param.grad.is_shared()
+        except:
+            pass
+
 
     def update_params(self) -> None:
         """
@@ -102,8 +108,6 @@ class ParameterServer:
 
         self.actor_optimizer.step()
         self.critic_optimizer.step()
-
-        print("Critic grad norm: ", self.shared_critic.grad_norm)
 
         self.actor_optimizer.zero_grad()
         self.critic_optimizer.zero_grad()

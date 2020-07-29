@@ -25,7 +25,9 @@ class Agent:
         self.device = "cuda:0" if torch.cuda.is_available() else "cpu"
 
         self.param_server = param_server
-        self.param_server.init_grad()
+        self.param_server.shared_critic.zero_grad()
+        self.param_server.shared_actor.zero_grad()
+        # self.param_server.init_grad()
 
         if parser_args.num_workers > 1:
             self.pid = current_process()._identity[0]
@@ -65,7 +67,7 @@ class Agent:
 
         self.num_grads = parser_args.num_grads
         self.grad_ctr = 0
-        self.cv = condition  # TODO: this is just a dummy object
+        self.cv = condition
 
     def run(self) -> None:
         """
@@ -79,7 +81,7 @@ class Agent:
             import time
             t = time.time()
             self.sample()
-            print(time.time() - t)
+            print("Time taken:", time.time() - t)
             self.learn()
             self.evaluate()
 
