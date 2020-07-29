@@ -19,13 +19,15 @@ class Agent:
     def __init__(self,
                  param_server,
                  shared_replay_buffer,
-                 parser_args):
+                 parser_args,
+                 condition):
 
         self.device = "cuda:0" if torch.cuda.is_available() else "cpu"
 
         self.param_server = param_server
+        self.param_server.init_grad()
 
-        if parser_args.num_worker > 1:
+        if parser_args.num_workers > 1:
             self.pid = current_process()._identity[0]
         else:
             self.pid = 1
@@ -63,7 +65,7 @@ class Agent:
 
         self.num_grads = parser_args.num_grads
         self.grad_ctr = 0
-        self.cond = Condition()
+        self.cv = condition  # TODO: this is just a dummy object
 
     def run(self) -> None:
         """
@@ -143,23 +145,6 @@ class Agent:
 
         for i in range(self.learning_steps):
 
-            # if i > 0:
-            #     print("before")
-            #     print("Actor", list(self.actor.parameters())[-1].data)
-            #     print("Actor.grad", list(self.actor.parameters())[-1].grad.detach().numpy())
-            #     print(self.actor.forward(torch.tensor(states[0], dtype=torch.float32)))
-            # print("Critic", list(self.target_critic.parameters())[-1].item())
-
-            self.actor.copy_params(self.param_server.shared_actor)
-            self.critic.copy_params(self.param_server.shared_critic)
-            # if i > 0:
-            #     print("after")
-            #     print("Actor", list(self.actor.parameters())[-1].data)
-            #     print("Actor.grad", list(self.actor.parameters())[-1].grad.detach().numpy())
-            # print(self.actor.forward(torch.tensor(states[0], dtype=torch.float32)))
-            # print("Critic", list(self.critic.parameters())[-1].item())
-            # print("Critic", list(self.critic.parameters())[-1].grad)
-
             # Update the target networks
             if i % self.update_targnets_every == 0:
                 self.update_targnets()
@@ -168,8 +153,6 @@ class Agent:
             self.critic.train()
 
             states, actions, rewards, behaviour_log_pr = self.shared_replay_buffer.sample()
-            states, actions, behaviour_log_pr = states.to(self.device), actions.to(self.device), behaviour_log_pr.to(
-                self.device)
 
             # Q(a_t, s_t)
             Q = self.critic.forward(actions, states)
@@ -225,17 +208,17 @@ class Agent:
 
             self.grad_ctr += 1
 
-            # print(self.param_server.N)
+            print(self.param_server.N)
+            print(self.grad_ctr)
             #
-            # with self.cond:
-            #     if self.grad_ctr == 2:
-            #         self.cond.wait_for(lambda: self.param_server.N == self.param_server.G)
-            #
-            #         self.actor.copy_params(self.param_server.shared_actor)
-            #         self.critic.copy_params(self.param_server.shared_critic)
-            #
-            #         self.grad_ctr = 0
+            if self.grad_ctr == self.num_grads:
+                with self.cv:
+                    self.cv.wait_for(lambda: self.param_server.N == self.param_server.G)
 
+                    self.actor.copy_params(self.param_server.shared_actor)
+                    self.critic.copy_params(self.param_server.shared_critic)
+
+                    self.grad_ctr = 0
 
             # Keep track of different values
             if self.pid == 1 and self.logging and i % self.log_every == 0:
@@ -318,4 +301,3 @@ class Agent:
                 for c_param, c_target_param in zip(self.critic.parameters(), self.target_critic.parameters()):
                     c_target_param.data.mul_(1 - smoothing_coefficient)
                     torch.add(c_target_param.data, c_param.data, alpha=smoothing_coefficient, out=c_target_param.data)
-

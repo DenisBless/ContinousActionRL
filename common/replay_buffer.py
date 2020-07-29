@@ -1,5 +1,5 @@
 import torch
-from torch.multiprocessing import Lock
+from torch.multiprocessing import Condition
 import random
 
 
@@ -51,12 +51,12 @@ class SharedReplayBuffer(ReplayBuffer):
                  num_actions: int,
                  trajectory_length: int,
                  capacity: int,
-                 batch_size: int,
-                 lock: Lock):
+                 cv: Condition,
+                 batch_size: int = 1):
 
         super(SharedReplayBuffer, self).__init__(num_obs, num_actions, trajectory_length, capacity, batch_size)
 
-        self.lock = lock
+        self.cv = cv
         self.state_memory.share_memory_()
         self.action_memory.share_memory_()
         self.reward_memory.share_memory_()
@@ -66,12 +66,11 @@ class SharedReplayBuffer(ReplayBuffer):
         self.full.share_memory_()
 
     def push(self, states, actions, rewards, log_probs) -> None:
-        with self.lock:
+        with self.cv:
             assert self.position.is_shared()
             assert self.state_memory.is_shared()
 
             super().push(states, actions, rewards, log_probs)
 
     def sample(self):
-        with self.lock:
-            return super().sample()
+        return super().sample()

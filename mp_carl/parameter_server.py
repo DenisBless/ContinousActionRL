@@ -1,7 +1,7 @@
 from mp_carl.actor_critic_models import Actor, Critic
 from mp_carl.optimizer import SharedAdam
 import torch
-from torch.multiprocessing import current_process
+from torch.multiprocessing import Condition
 
 
 class ParameterServer:
@@ -19,19 +19,18 @@ class ParameterServer:
         p -= η * g
 
     """
-    def __init__(self, G: int, actor_lr: float, critic_lr: float, num_actions: int, num_obs: int, lock, arg_parser):
+    def __init__(self, actor_lr: float, critic_lr: float, num_actions: int, num_obs: int, cv: Condition,
+                 arg_parser):
 
-        device = "cuda:0" if torch.cuda.is_available() else "cpu"
-
-        self.G = G  # number of gradients before updating networks
+        self.G = arg_parser.num_workers * arg_parser.num_grads  # number of gradients before updating networks
         self.N = torch.tensor(0)  # current number of gradients
         self.N.share_memory_()
-        self.lock = lock  # enter monitor to prevent race condition
+        self.cv = cv  # enter monitor to prevent race condition
 
-        self.shared_actor = Actor(num_actions=num_actions, num_obs=num_obs).to(device)
+        self.shared_actor = Actor(num_actions=num_actions, num_obs=num_obs)
         self.shared_actor.share_memory()
 
-        self.shared_critic = Critic(num_actions=num_actions, num_obs=num_obs).to(device)
+        self.shared_critic = Critic(num_actions=num_actions, num_obs=num_obs)
         self.shared_critic.share_memory()
 
         self.actor_optimizer = SharedAdam(self.shared_actor.parameters(), actor_lr)
@@ -55,16 +54,15 @@ class ParameterServer:
         Returns:
             No return value
         """
-        with self.lock:
+        with self.cv:
             if self.N == self.G:
-                self.N -= self.N
+                self.N.zero_()
             self.add_gradients(source_actor=actor, source_critic=critic)
             self.N += 1
-            assert self.N.is_shared()  # todo remove when everything is working
+            assert self.N.is_shared()
             if self.N >= self.G:
                 self.update_params()
-                # Reset to 0. Ugly but otherwise not working because position will not be in shared mem if new assigned.
-                # self.N -= self.N
+                self.cv.notify_all()
 
     def add_gradients(self, source_actor: torch.nn.Module, source_critic: torch.nn.Module) -> None:
         """

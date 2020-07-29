@@ -1,9 +1,10 @@
 import random
 import torch
+from torch.multiprocessing import Condition
 
 
 class SharedReplayBuffer(object):
-    def __init__(self, num_actions, trajectory_length, num_obs, capacity, lock):
+    def __init__(self, num_actions: int, trajectory_length: int, num_obs: int, capacity: int, lock):
         self.capacity = capacity
         self.num_actions = num_actions
         self.num_obs = num_obs

@@ -7,15 +7,15 @@ from gym.spaces import Box
 import torch.multiprocessing as mp
 from mp_carl.agent import Agent
 from mp_carl.parameter_server import ParameterServer
-from mp_carl.shared_replay_buffer import SharedReplayBuffer
+from common.replay_buffer import SharedReplayBuffer
 
 parser = argparse.ArgumentParser(description='algorithm arguments')
 
 # Algorithm parameter
 # parser.add_argument('--num_worker', type=int, default=os.cpu_count(),
-parser.add_argument('--num_worker', type=int, default=2,
+parser.add_argument('--num_workers', type=int, default=2,
                     help='Number of workers training the agent in parallel.')
-parser.add_argument('--num_grads', type=int, default=1,
+parser.add_argument('--num_grads', type=int, default=2,
                     help='Number of gradients collected before updating the networks.')
 parser.add_argument('--update_targnets_every', type=int, default=10,
                     help='Number of learning steps before the target networks are updated.')
@@ -52,7 +52,7 @@ parser.add_argument('--logging', type=bool, default=True,
 #                     help='Length of a episode.')
 parser.add_argument('--num_eval_trajectories', type=int, default=1,
                     help='Number of trajectories used for evaluating the policy.')
-parser.add_argument('--num_trajectories', type=int, default=20,
+parser.add_argument('--num_trajectories', type=int, default=10,
                     help='Number of trajectories sampled before entering the learning phase.')
 parser.add_argument('--dt', type=float, default=1e-3,
                     help='Time between steps in the mujoco pyhsics simulation (in seconds).')
@@ -101,38 +101,38 @@ OBS_SPACE = None  # observation space is unbounded
 EPISODE_LENGTH = 1000
 
 
-def work(param_server, replay_buffer, parser_args):
+def work(param_server, replay_buffer, parser_args, condition):
     worker = Agent(param_server=param_server,
                    shared_replay_buffer=replay_buffer,
-                   parser_args=parser_args)
+                   parser_args=parser_args,
+                   condition=condition)
     worker.run()
 
 
 if __name__ == '__main__':
     os.environ['CUDA_VISIBLE_DEVICES'] = ""  # Disable CUDA
 
-    lock = mp.Lock()
+    cv = mp.Condition()
     args = parser.parse_args()
-    shared_param_server = ParameterServer(G=args.num_grads,
-                                          actor_lr=args.actor_lr,
+    shared_param_server = ParameterServer(actor_lr=args.actor_lr,
                                           critic_lr=args.critic_lr,
                                           num_actions=NUM_ACTIONS,
                                           num_obs=NUM_OBSERVATIONS,
-                                          lock=lock,
+                                          cv=cv,
                                           arg_parser=args)
 
     shared_replay_buffer = SharedReplayBuffer(capacity=args.replay_buffer_size,
                                               trajectory_length=EPISODE_LENGTH,
                                               num_actions=NUM_ACTIONS,
                                               num_obs=NUM_OBSERVATIONS,
-                                              lock=lock)
+                                              cv=cv)
 
-    if args.num_worker == 1:
-        work(param_server=shared_param_server, replay_buffer=shared_replay_buffer, parser_args=args)
+    if args.num_workers == 1:
+        work(param_server=shared_param_server, replay_buffer=shared_replay_buffer, parser_args=args, condition=cv)
 
-    elif args.num_worker > 1:
-        processes = [mp.Process(target=work, args=(shared_param_server, shared_replay_buffer, args))
-                     for _ in range(args.num_worker)]
+    elif args.num_workers > 1:
+        processes = [mp.Process(target=work, args=(shared_param_server, shared_replay_buffer, args, cv))
+                     for _ in range(args.num_workers)]
         for p in processes:
             p.start()
 
