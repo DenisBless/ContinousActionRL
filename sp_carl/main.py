@@ -91,7 +91,7 @@ if __name__ == '__main__':
                                               num_actions=NUM_ACTIONS,
                                               num_obs=NUM_OBSERVATIONS,
                                               batch_size=args.batch_size,
-                                              lock=lock)
+                                              cv=lock)
 
     learner = Learner(actor=actor,
                       critic=critic,

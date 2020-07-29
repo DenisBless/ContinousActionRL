@@ -19,6 +19,7 @@ class ParameterServer:
         p -= η * g
 
     """
+
     def __init__(self, actor_lr: float, critic_lr: float, num_actions: int, num_obs: int, cv: Condition,
                  arg_parser):
 
@@ -42,14 +43,16 @@ class ParameterServer:
 
         self.init_grad()
 
-    def receive_gradients(self, actor: torch.nn.Module, critic: torch.nn.Module) -> None:
+    def receive_critic_gradients(self, critic: torch.nn.Module):
+        self.add_gradients(net=self.shared_critic, source_net=critic)
+
+    def receive_actor_gradients(self, actor: torch.nn.Module) -> None:
         """
         Receive gradients by the workers. Update the parameters of the shared networks after G gradients were
         accumulated.
 
         Args:
             actor: The actor network
-            critic: The critic network
 
         Returns:
             No return value
@@ -57,14 +60,14 @@ class ParameterServer:
         with self.cv:
             if self.N == self.G:
                 self.N.zero_()
-            self.add_gradients(source_actor=actor, source_critic=critic)
+            self.add_gradients(net=self.shared_actor, source_net=actor)
             self.N += 1
             assert self.N.is_shared()
             if self.N >= self.G:
                 self.update_params()
                 self.cv.notify_all()
 
-    def add_gradients(self, source_actor: torch.nn.Module, source_critic: torch.nn.Module) -> None:
+    def add_gradients(self, net: torch.nn.Module, source_net: torch.nn.Module) -> None:
         """
         Add the gradients from the workers to
         Args:
@@ -74,13 +77,9 @@ class ParameterServer:
         Returns:
             No return value
         """
-        for a_param, a_source_param in zip(self.shared_actor.parameters(), source_actor.parameters()):
-            a_param.grad += a_source_param.grad / self.G
-            assert a_param.grad.is_shared()
-
-        for c_param, c_source_param in zip(self.shared_critic.parameters(), source_critic.parameters()):
-            c_param.grad += c_source_param.grad / self.G
-            assert c_param.grad.is_shared()
+        for param, source_param in zip(net.parameters(), source_net.parameters()):
+            param.grad += source_param.grad / self.G
+            assert param.grad.is_shared()
 
     def update_params(self) -> None:
         """
@@ -90,20 +89,27 @@ class ParameterServer:
             No return value
         """
         # print("before")
-        # self.print_grad_norm(self.shared_critic)
+        # print(self.shared_critic.grad_norm)
         # self.print_grad_norm(self.shared_actor)
         if self.global_gradient_norm != -1:
             torch.nn.utils.clip_grad_norm_(self.shared_actor.parameters(), self.global_gradient_norm)
             torch.nn.utils.clip_grad_norm_(self.shared_critic.parameters(), self.global_gradient_norm)
         # print("after")
-        # self.print_grad_norm(self.shared_critic)
+        # print(self.shared_critic.grad_norm)
+        assert self.shared_critic.grad_norm <= self.global_gradient_norm
+        assert self.shared_actor.grad_norm <= self.global_gradient_norm
         # self.print_grad_norm(self.shared_actor)
 
         self.actor_optimizer.step()
         self.critic_optimizer.step()
 
+        print("Critic grad norm: ", self.shared_critic.grad_norm)
+
         self.actor_optimizer.zero_grad()
         self.critic_optimizer.zero_grad()
+
+        assert not self.shared_critic.grad_norm
+        assert not self.shared_actor.grad_norm
 
     def init_grad(self) -> None:
         """
@@ -127,5 +133,3 @@ class ParameterServer:
         for i in range(len(list(net.parameters()))):
             n += torch.norm(list(net.parameters())[i].grad)
         print(n)
-
-

@@ -47,6 +47,9 @@ class Base(torch.nn.Module):
         """
         for params in self.parameters():
             params.requires_grad = False
+    @property
+    def grad_norm(self):
+        return torch.norm(torch.stack([torch.norm(p.grad.detach()) for p in self.parameters()]))
 
     @staticmethod
     def init_weights(module: torch.nn.Module) -> None:

@@ -60,6 +60,10 @@ class Base(torch.nn.Module):
                 return False
         return True
 
+    def has_zero_grads(self):
+        for params in self.parameters():
+            assert params.grad.sum() == 0
+
     @property
     def param_norm(self):
         return torch.norm(torch.stack([torch.norm(p.detach()) for p in self.parameters()]))

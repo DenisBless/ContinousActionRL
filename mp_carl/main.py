@@ -15,7 +15,7 @@ parser = argparse.ArgumentParser(description='algorithm arguments')
 # parser.add_argument('--num_worker', type=int, default=os.cpu_count(),
 parser.add_argument('--num_workers', type=int, default=2,
                     help='Number of workers training the agent in parallel.')
-parser.add_argument('--num_grads', type=int, default=2,
+parser.add_argument('--num_grads', type=int, default=5,
                     help='Number of gradients collected before updating the networks.')
 parser.add_argument('--update_targnets_every', type=int, default=10,
                     help='Number of learning steps before the target networks are updated.')
@@ -27,7 +27,7 @@ parser.add_argument('--actor_lr', type=float, default=2e-4,
                     help='Learning rate for the actor network.')
 parser.add_argument('--critic_lr', type=float, default=2e-4,
                     help='Learning rate for the critic network.')
-parser.add_argument('--init_std', type=float, default=0,
+parser.add_argument('--init_std', type=float, default=1,
                     help='Initial standard deviation of the actor.')
 
 parser.add_argument('--global_gradient_norm', type=float, default=0.5,
@@ -76,13 +76,13 @@ SAVE_MODEL_EVERY = 10
 LOG_INTERVAL = 10
 
 # Pendulum
-NUM_ACTIONS = 1
-NUM_OBSERVATIONS = 3
-ACTION_SPACE = Box(low=np.array([-2.]),
-                   high=np.array([2.]))
-OBS_SPACE = Box(low=np.array([-1., -1., -8.]),
-                high=np.array([1., 1., 8.]))
-EPISODE_LENGTH = 200
+# NUM_ACTIONS = 1
+# NUM_OBSERVATIONS = 3
+# ACTION_SPACE = Box(low=np.array([-2.]),
+#                    high=np.array([2.]))
+# OBS_SPACE = Box(low=np.array([-1., -1., -8.]),
+#                 high=np.array([1., 1., 8.]))
+# EPISODE_LENGTH = 200
 
 # HalfCheetah
 # NUM_ACTIONS = 6

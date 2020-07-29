@@ -140,17 +140,18 @@ class Agent:
         Returns:
             No return value
         """
+
         self.actor.copy_params(self.param_server.shared_actor)
         self.critic.copy_params(self.param_server.shared_critic)
+
+        self.actor.train()
+        self.critic.train()
 
         for i in range(self.learning_steps):
 
             # Update the target networks
             if i % self.update_targnets_every == 0:
                 self.update_targnets()
-
-            self.actor.train()
-            self.critic.train()
 
             states, actions, rewards, behaviour_log_pr = self.shared_replay_buffer.sample()
 
@@ -179,8 +180,6 @@ class Agent:
             current_Q = self.critic.forward(current_actions, states)
 
             # Critic update
-            self.actor.eval()
-            self.critic.train()
 
             critic_loss = self.critic_loss.forward(Q=Q,
                                                    expected_target_Q=expected_target_Q,
@@ -189,22 +188,15 @@ class Agent:
                                                    target_policy_probs=target_action_log_prob,
                                                    behaviour_policy_probs=behaviour_log_pr,
                                                    logger=self.logger)
+            self.critic.zero_grad()
             critic_loss.backward(retain_graph=True)
-
-            # Actor update
-            self.actor.train()
-            self.critic.eval()
+            self.param_server.receive_critic_gradients(self.critic)  # Send critic gradients to the parameter server
 
             actor_loss = self.actor_loss.forward(Q=current_Q,
                                                  action_log_prob=current_action_log_prob.unsqueeze(-1))
-            actor_loss.backward()
-
-            # Send the gradients to the parameter server
-            self.param_server.receive_gradients(actor=self.actor, critic=self.critic)
-
-            # Reset the gradients
-            self.critic.zero_grad()
             self.actor.zero_grad()
+            actor_loss.backward()
+            self.param_server.receive_actor_gradients(self.actor)  # Send actor gradients to the parameter server
 
             self.grad_ctr += 1
 
