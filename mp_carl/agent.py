@@ -28,6 +28,11 @@ class Agent:
         self.param_server.shared_critic.zero_grad()
         self.param_server.shared_actor.zero_grad()
         # self.param_server.init_grad()
+        # with condition:
+            # print("before:", list(self.param_server.shared_actor.parameters())[0])
+            # list(self.param_server.shared_actor.parameters())[0] = (torch.ones_like(list(
+            #     self.param_server.shared_actor.parameters())[0]))
+            # print("after:", list(self.param_server.shared_actor.parameters())[0])
 
         if parser_args.num_workers > 1:
             self.pid = current_process()._identity[0]
@@ -190,20 +195,24 @@ class Agent:
                                                    target_policy_probs=target_action_log_prob,
                                                    behaviour_policy_probs=behaviour_log_pr,
                                                    logger=self.logger)
-            self.critic.zero_grad()
-            critic_loss.backward(retain_graph=True)
-            self.param_server.receive_critic_gradients(self.critic)  # Send critic gradients to the parameter server
+            # self.critic.zero_grad()
+            # critic_loss.backward(retain_graph=True)
+            # self.param_server.receive_critic_gradients(self.critic)  # Send critic gradients to the parameter server
 
             actor_loss = self.actor_loss.forward(Q=current_Q,
                                                  action_log_prob=current_action_log_prob.unsqueeze(-1))
-            self.actor.zero_grad()
-            actor_loss.backward()
-            self.param_server.receive_actor_gradients(self.actor)  # Send actor gradients to the parameter server
+            # self.actor.zero_grad()
+            # actor_loss.backward()
+            # self.param_server.receive_actor_gradients(self.actor)  # Send actor gradients to the parameter server
+            critic_grads = torch.autograd.grad(critic_loss, list(self.critic.parameters()), retain_graph=True)
+            actor_grads = torch.autograd.grad(actor_loss, list(self.actor.parameters()), retain_graph=True)
+
+            self.param_server.receive_gradients(actor_grads, critic_grads)
 
             self.grad_ctr += 1
 
             print(self.param_server.N)
-            print(self.grad_ctr)
+            # print(self.grad_ctr)
             #
             if self.grad_ctr == self.num_grads:
                 with self.cv:
@@ -215,13 +224,13 @@ class Agent:
                     self.grad_ctr = 0
 
             # Keep track of different values
-            if self.pid == 1 and self.logging and i % self.log_every == 0:
-                self.logger.add_scalar(scalar_value=actor_loss.item(), tag="Loss/Actor_loss")
-                self.logger.add_scalar(scalar_value=critic_loss.item(), tag="Loss/Critic_loss")
-                self.logger.add_scalar(scalar_value=current_log_std.exp().mean(), tag="Statistics/Action_std")
+            # if self.pid == 1 and self.logging and i % self.log_every == 0:
+            #     self.logger.add_scalar(scalar_value=actor_loss.item(), tag="Loss/Actor_loss")
+            #     self.logger.add_scalar(scalar_value=critic_loss.item(), tag="Loss/Critic_loss")
+            #     self.logger.add_scalar(scalar_value=current_log_std.exp().mean(), tag="Statistics/Action_std")
 
-                self.logger.add_scalar(scalar_value=list(self.critic.parameters())[-1].item(), tag="Critic/param")
-                self.logger.add_scalar(scalar_value=list(self.critic.parameters())[-1].grad, tag="Critic/grad")
+                # self.logger.add_scalar(scalar_value=list(self.critic.parameters())[-1].item(), tag="Critic/param")
+                # self.logger.add_scalar(scalar_value=list(self.critic.parameters())[-1].grad, tag="Critic/grad")
 
                 # self.logger.add_scalar(scalar_value=Q[0], tag="Q_/Q0")
                 # self.logger.add_scalar(scalar_value=Q[-1], tag="Q_/QT")
@@ -230,10 +239,10 @@ class Agent:
                 # self.logger.add_scalar(scalar_value=expected_target_Q[0], tag="V/V0")
                 # self.logger.add_scalar(scalar_value=expected_target_Q[-1], tag="V/VT")
 
-                self.logger.add_histogram(values=current_mean, tag="Statistics/Action_mean")
-                self.logger.add_histogram(values=rewards.sum(dim=-1), tag="Cumm Reward/Action_mean")
-                # print(current_mean[:10])
-                self.logger.add_histogram(values=current_actions, tag="Statistics/Action")
+                # self.logger.add_histogram(values=current_mean, tag="Statistics/Action_mean")
+                # self.logger.add_histogram(values=rewards.sum(dim=-1), tag="Cumm Reward/Action_mean")
+                # # print(current_mean[:10])
+                # self.logger.add_histogram(values=current_actions, tag="Statistics/Action")
 
         self.actor.copy_params(self.param_server.shared_actor)
         self.critic.copy_params(self.param_server.shared_critic)
@@ -266,7 +275,7 @@ class Agent:
 
                 if done:
                     obs = torch.tensor(self.env.reset(), dtype=torch.float).to(self.device)
-                    print("Mean reward: ", np.mean(rewards))
+                    # print("Mean reward: ", np.mean(rewards))
                     if self.pid == 1 and self.logger is not None:
                         self.logger.add_scalar(scalar_value=np.mean(rewards), tag="Reward/test")
 

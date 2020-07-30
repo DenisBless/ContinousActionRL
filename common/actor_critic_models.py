@@ -115,7 +115,7 @@ class Actor(Base):
                 actor_modules.append(torch.nn.ReLU())
 
         self.model = torch.nn.Sequential(*actor_modules)
-        self.init_weights(self.model)
+        self.init_weights(self.model)# todo does not work
 
         self.log_std = torch.nn.Parameter(torch.ones(self.action_dim) * self.log_std_init, requires_grad=True)
 

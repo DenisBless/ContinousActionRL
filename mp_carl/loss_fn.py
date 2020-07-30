@@ -1,6 +1,5 @@
 import torch
 import torch.nn.functional as F
-from torch.multiprocessing import current_process
 
 
 class Retrace(torch.nn.Module):
