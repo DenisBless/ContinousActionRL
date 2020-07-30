@@ -92,7 +92,6 @@ class Agent:
             No return value
         """
         self.actor = self.actor.to(self.device)
-        self.critc = self.critic.to(self.device)
         self.target_actor = self.target_actor.to(self.device)
         self.target_critic = self.target_critic.to(self.device)
         self.actor.copy_params(self.param_server.shared_actor)
@@ -155,40 +154,6 @@ class Agent:
                 self.update_targnets()
 
             states, actions, rewards, behaviour_log_pr = self.shared_replay_buffer.sample()
-            #
-            # # Q(a_t, s_t)
-            # Q = self.critic.forward(actions, states)
-            #
-            # # Q_target(a_t, s_t)
-            # target_Q = self.target_critic.forward(actions, states)
-            #
-            # # Compute 𝔼_π_target [Q(s_t,•)] with a ~ π_target(•|s_t), log(π_target(a|s)) with 1 sample
-            # mean, log_std = self.target_actor.forward(states)
-            # mean, log_std = mean.to(self.device), log_std.to(self.device)
-            #
-            # action_sample, _ = self.target_actor.action_sample(mean, log_std)
-            # expected_target_Q = self.target_critic.forward(action_sample, states)
-            #
-            # # log(π_target(a_t | s_t))
-            # target_action_log_prob = self.target_actor.get_log_prob(actions, mean, log_std)
-            #
-            # # a ~ π(•|s_t), log(π(a|s_t))
-            # current_mean, current_log_std = self.actor.forward(states)
-            # current_actions, current_action_log_prob = self.actor.action_sample(current_mean, current_log_std)
-            # current_actions.to(self.device)
-            #
-            # # Q(a, s_t)
-            # current_Q = self.critic.forward(current_actions, states)
-            #
-            # critic_loss = self.critic_loss.forward(Q=Q,
-            #                                        expected_target_Q=expected_target_Q,
-            #                                        target_Q=target_Q,
-            #                                        rewards=rewards,
-            #                                        target_policy_probs=target_action_log_prob,
-            #                                        behaviour_policy_probs=behaviour_log_pr,
-            #                                        logger=self.logger)
-            # actor_loss = self.actor_loss.forward(Q=current_Q,
-            #                                      action_log_prob=current_action_log_prob.unsqueeze(-1))
 
             # Q(a_t, s_t)
             batch_Q = self.critic(torch.cat([actions, states], dim=-1))
@@ -256,16 +221,6 @@ class Agent:
                 self.logger.add_scalar(scalar_value=critic_loss.item(), tag="Loss/Critic_loss")
                 self.logger.add_scalar(scalar_value=current_log_std.exp().mean(), tag="Statistics/Action_std")
 
-                # self.logger.add_scalar(scalar_value=list(self.critic.parameters())[-1].item(), tag="Critic/param")
-                # self.logger.add_scalar(scalar_value=list(self.critic.parameters())[-1].grad, tag="Critic/grad")
-
-                # self.logger.add_scalar(scalar_value=Q[0], tag="Q_/Q0")
-                # self.logger.add_scalar(scalar_value=Q[-1], tag="Q_/QT")
-                # self.logger.add_scalar(scalar_value=target_Q[0], tag="targetQ/targetQ0")
-                # self.logger.add_scalar(scalar_value=target_Q[-1], tag="targetQ/targetQT")
-                # self.logger.add_scalar(scalar_value=expected_target_Q[0], tag="V/V0")
-                # self.logger.add_scalar(scalar_value=expected_target_Q[-1], tag="V/VT")
-                #
                 self.logger.add_histogram(values=current_mean, tag="Statistics/Action_mean")
                 self.logger.add_histogram(values=rewards.sum(dim=-1), tag="Cumm Reward/Action_mean")
                 # print(current_mean[:10])
@@ -283,7 +238,6 @@ class Agent:
 
         """
         self.actor.copy_params(self.param_server.shared_actor)
-        self.actor.eval()  # Eval mode: Sets the action variance to zero, disables batch-norm and dropout etc.
 
         obs = torch.tensor(self.env.reset(), dtype=torch.float)
         obs = obs.to(self.device)
@@ -293,8 +247,7 @@ class Agent:
             while not done:
                 mean, log_std = self.actor.forward(obs)
                 mean = mean.to(self.device)
-                log_std = log_std.to(self.device)
-                action, action_log_prob = self.actor.action_sample(mean, log_std)
+                action, action_log_prob = self.actor.action_sample(mean, torch.ones_like(mean) * -1e10)  # zero std
                 action = action.to(self.device)
                 next_obs, reward, done, _ = self.env.step(action.detach().cpu().numpy())
                 rewards.append(reward)
@@ -305,8 +258,6 @@ class Agent:
                     # print("Mean reward: ", np.mean(rewards))
                     if self.pid == 1 and self.logger is not None:
                         self.logger.add_scalar(scalar_value=np.mean(rewards), tag="Reward/test")
-
-        self.actor.train()  # Back to train mode
 
     def update_targnets(self, smoothing_coefficient=1) -> None:
         """

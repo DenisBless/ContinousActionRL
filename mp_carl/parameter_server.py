@@ -1,5 +1,3 @@
-from torch import Tensor
-
 from common.actor_critic_models import Actor, Critic
 from mp_carl.optimizer import SharedAdam
 import torch
@@ -22,7 +20,6 @@ class ParameterServer:
             i++
 
         p -= η * g
-
     """
 
     def __init__(self, actor_lr: float, critic_lr: float, num_actions: int, num_obs: int,
@@ -60,11 +57,9 @@ class ParameterServer:
 
     def receive_gradients(self, actor_grads, critic_grads) -> None:
         """
-        Receive gradients by the workers. Update the parameters of the shared networks after G gradients were
-        accumulated.
+        Receive gradients by the workers.
 
         Args:
-            actor: The actor network
 
         Returns:
             No return value
@@ -86,27 +81,17 @@ class ParameterServer:
         Returns:
             No return value
         """
-        # print(self.critic_grads[-1])
-
         for a_param, a_grad in zip(self.shared_actor.parameters(), self.actor_grads):
             a_param.grad = a_grad
         for c_param, c_grad in zip(self.shared_critic.parameters(), self.critic_grads):
             c_param.grad = c_grad
-        # print("before")
-        # print(self.shared_critic.grad_norm)
-        # self.print_grad_norm(self.shared_actor)
+
         if self.global_gradient_norm != -1:
             torch.nn.utils.clip_grad_norm_(self.shared_actor.parameters(), self.global_gradient_norm)
             torch.nn.utils.clip_grad_norm_(self.shared_critic.parameters(), self.global_gradient_norm)
-        # print("after")
-        # print(self.shared_critic.grad_norm)
-        # assert (self.shared_critic.grad_norm <= self.global_gradient_norm).item()
-        # assert (self.shared_actor.grad_norm <= self.global_gradient_norm).item()
-        # self.print_grad_norm(self.shared_actor)
-        # print("bef", list(self.shared_actor.parameters())[0])
+
         self.actor_optimizer.step()
         self.critic_optimizer.step()
-        # print("aft", list(self.shared_actor.parameters())[0])
 
         self.actor_optimizer.zero_grad()
         self.critic_optimizer.zero_grad()
