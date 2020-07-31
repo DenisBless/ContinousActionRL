@@ -1,10 +1,10 @@
 import copy
-
+import os
 from torch.utils.tensorboard import SummaryWriter
 
-from torch.multiprocessing import current_process, Lock, Condition
-from mp_carl.loss_fn import Retrace, ActorLoss
-from mp_carl.actor_critic_models import Actor, Critic
+from torch.multiprocessing import current_process
+from common.loss_fn import Retrace, ActorLoss
+from common.actor_critic_models import Actor, Critic
 import torch
 import gym
 import numpy as np
@@ -27,7 +27,6 @@ class Agent:
         self.param_server = param_server
         self.param_server.shared_critic.zero_grad()
         self.param_server.shared_actor.zero_grad()
-        # self.param_server.init_grad()
 
         if parser_args.num_workers > 1:
             self.pid = current_process()._identity[0]
@@ -56,7 +55,7 @@ class Agent:
         self.target_critic.freeze_net()
 
         self.actor_loss = ActorLoss(alpha=parser_args.entropy_reg)
-        self.critic_loss = Retrace(num_actions=self.num_actions)
+        self.critic_loss = Retrace(num_actions=self.num_actions, reward_scale=1)
 
         self.num_trajectories = parser_args.num_trajectories
         self.update_targnets_every = parser_args.update_targnets_every
@@ -93,7 +92,6 @@ class Agent:
             No return value
         """
         self.actor = self.actor.to(self.device)
-        self.critc = self.critic.to(self.device)
         self.target_actor = self.target_actor.to(self.device)
         self.target_critic = self.target_critic.to(self.device)
         self.actor.copy_params(self.param_server.shared_actor)
@@ -158,77 +156,70 @@ class Agent:
             states, actions, rewards, behaviour_log_pr = self.shared_replay_buffer.sample()
 
             # Q(a_t, s_t)
-            Q = self.critic.forward(actions, states)
+            batch_Q = self.critic(torch.cat([actions, states], dim=-1))
 
             # Q_target(a_t, s_t)
-            target_Q = self.target_critic.forward(actions, states)
+            target_Q = self.target_critic(torch.cat([actions, states], dim=-1))
 
             # Compute 𝔼_π_target [Q(s_t,•)] with a ~ π_target(•|s_t), log(π_target(a|s)) with 1 sample
-            mean, log_std = self.target_actor.forward(states)
+            mean, log_std = self.target_actor(states)
             mean, log_std = mean.to(self.device), log_std.to(self.device)
 
             action_sample, _ = self.target_actor.action_sample(mean, log_std)
-            expected_target_Q = self.target_critic.forward(action_sample, states)
+            # action_sample = torch.tanh(mean)
+            expected_target_Q = self.target_critic(torch.cat([action_sample, states], dim=-1))
 
             # log(π_target(a_t | s_t))
-            target_action_log_prob = self.target_actor.get_log_prob(actions, mean, log_std)
+            target_action_log_prob = self.target_actor.get_log_prob(actions=actions, mean=mean, log_std=log_std)
 
             # a ~ π(•|s_t), log(π(a|s_t))
-            current_mean, current_log_std = self.actor.forward(states)
+            current_mean, current_log_std = self.actor(states)
             current_actions, current_action_log_prob = self.actor.action_sample(current_mean, current_log_std)
             current_actions.to(self.device)
 
             # Q(a, s_t)
-            current_Q = self.critic.forward(current_actions, states)
+            current_Q = self.critic(torch.cat([current_actions, states], dim=-1))
 
-            # Critic update
+            critic_loss = self.critic_loss(Q=batch_Q,
+                                           expected_target_Q=expected_target_Q,
+                                           target_Q=target_Q,
+                                           rewards=rewards,
+                                           target_policy_probs=target_action_log_prob,
+                                           behaviour_policy_probs=behaviour_log_pr,
+                                           logger=self.logger)
+            actor_loss = self.actor_loss(Q=current_Q, action_log_prob=current_action_log_prob.unsqueeze(-1))
 
-            critic_loss = self.critic_loss.forward(Q=Q,
-                                                   expected_target_Q=expected_target_Q,
-                                                   target_Q=target_Q,
-                                                   rewards=rewards,
-                                                   target_policy_probs=target_action_log_prob,
-                                                   behaviour_policy_probs=behaviour_log_pr,
-                                                   logger=self.logger)
-            self.critic.zero_grad()
-            critic_loss.backward(retain_graph=True)
-            self.param_server.receive_critic_gradients(self.critic)  # Send critic gradients to the parameter server
+            # Calculate gradients
+            critic_grads = torch.autograd.grad(critic_loss, list(self.critic.parameters()), retain_graph=True)
+            actor_grads = torch.autograd.grad(actor_loss, list(self.actor.parameters()), retain_graph=True)
 
-            actor_loss = self.actor_loss.forward(Q=current_Q,
-                                                 action_log_prob=current_action_log_prob.unsqueeze(-1))
-            self.actor.zero_grad()
-            actor_loss.backward()
-            self.param_server.receive_actor_gradients(self.actor)  # Send actor gradients to the parameter server
+            self.param_server.receive_gradients(actor_grads, critic_grads)
 
             self.grad_ctr += 1
 
-            print(self.param_server.N)
-            print(self.grad_ctr)
+            # print(self.grad_ctr)
             #
             if self.grad_ctr == self.num_grads:
                 with self.cv:
-                    self.cv.wait_for(lambda: self.param_server.N == self.param_server.G)
-
+                    # print(self.param_server.N)
+                    if self.param_server.N == self.param_server.G:
+                        self.param_server.server_cv.notify()
+                    # print(os.getpid(), " locked")
+                    self.cv.wait_for(lambda: self.param_server.N.item() == 0)
+                    # print(os.getpid(), " released")
                     self.actor.copy_params(self.param_server.shared_actor)
                     self.critic.copy_params(self.param_server.shared_critic)
 
                     self.grad_ctr = 0
+            # print(os.getpid(), "grad norms: ", self.param_server.get_grad_norm())
+            # print(os.getpid(), "param norms: ", self.param_server.get_param_norm())
+            # print(os.getpid(), "target param norms: ", self.target_critic.param_norm)
 
             # Keep track of different values
             if self.pid == 1 and self.logging and i % self.log_every == 0:
                 self.logger.add_scalar(scalar_value=actor_loss.item(), tag="Loss/Actor_loss")
                 self.logger.add_scalar(scalar_value=critic_loss.item(), tag="Loss/Critic_loss")
                 self.logger.add_scalar(scalar_value=current_log_std.exp().mean(), tag="Statistics/Action_std")
-
-                self.logger.add_scalar(scalar_value=list(self.critic.parameters())[-1].item(), tag="Critic/param")
-                self.logger.add_scalar(scalar_value=list(self.critic.parameters())[-1].grad, tag="Critic/grad")
-
-                # self.logger.add_scalar(scalar_value=Q[0], tag="Q_/Q0")
-                # self.logger.add_scalar(scalar_value=Q[-1], tag="Q_/QT")
-                # self.logger.add_scalar(scalar_value=target_Q[0], tag="targetQ/targetQ0")
-                # self.logger.add_scalar(scalar_value=target_Q[-1], tag="targetQ/targetQT")
-                # self.logger.add_scalar(scalar_value=expected_target_Q[0], tag="V/V0")
-                # self.logger.add_scalar(scalar_value=expected_target_Q[-1], tag="V/VT")
 
                 self.logger.add_histogram(values=current_mean, tag="Statistics/Action_mean")
                 self.logger.add_histogram(values=rewards.sum(dim=-1), tag="Cumm Reward/Action_mean")
@@ -247,7 +238,6 @@ class Agent:
 
         """
         self.actor.copy_params(self.param_server.shared_actor)
-        self.actor.eval()  # Eval mode: Sets the action variance to zero, disables batch-norm and dropout etc.
 
         obs = torch.tensor(self.env.reset(), dtype=torch.float)
         obs = obs.to(self.device)
@@ -257,8 +247,7 @@ class Agent:
             while not done:
                 mean, log_std = self.actor.forward(obs)
                 mean = mean.to(self.device)
-                log_std = log_std.to(self.device)
-                action, action_log_prob = self.actor.action_sample(mean, log_std)
+                action, action_log_prob = self.actor.action_sample(mean, torch.ones_like(mean) * -1e10)  # zero std
                 action = action.to(self.device)
                 next_obs, reward, done, _ = self.env.step(action.detach().cpu().numpy())
                 rewards.append(reward)
@@ -266,11 +255,9 @@ class Agent:
 
                 if done:
                     obs = torch.tensor(self.env.reset(), dtype=torch.float).to(self.device)
-                    print("Mean reward: ", np.mean(rewards))
+                    # print("Mean reward: ", np.mean(rewards))
                     if self.pid == 1 and self.logger is not None:
                         self.logger.add_scalar(scalar_value=np.mean(rewards), tag="Reward/test")
-
-        self.actor.train()  # Back to train mode
 
     def update_targnets(self, smoothing_coefficient=1) -> None:
         """

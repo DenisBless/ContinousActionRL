@@ -44,5 +44,4 @@ if __name__ == '__main__':
     actor.load_state_dict(torch.load(model_dir))
 
     evaluator = Evaluator(actor=actor, argp=args, render=False)
-    evaluator.num_samples = 50
     evaluator.eval()

@@ -15,9 +15,9 @@ parser = argparse.ArgumentParser(description='algorithm arguments')
 # parser.add_argument('--num_worker', type=int, default=os.cpu_count(),
 parser.add_argument('--num_workers', type=int, default=2,
                     help='Number of workers training the agent in parallel.')
-parser.add_argument('--num_grads', type=int, default=200,
+parser.add_argument('--num_grads', type=int, default=20,
                     help='Number of gradients collected before updating the networks.')
-parser.add_argument('--update_targnets_every', type=int, default=10,
+parser.add_argument('--update_targnets_every', type=int, default=1,
                     help='Number of learning steps before the target networks are updated.')
 parser.add_argument('--learning_steps', type=int, default=2000,
                     help='Total number of learning timesteps before sampling trajectories.')
@@ -30,7 +30,7 @@ parser.add_argument('--critic_lr', type=float, default=2e-4,
 parser.add_argument('--init_std', type=float, default=1,
                     help='Initial standard deviation of the actor.')
 
-parser.add_argument('--global_gradient_norm', type=float, default=0.5,
+parser.add_argument('--global_gradient_norm', type=float, default=-1,
                     help='Enables gradient clipping with a specified global parameter L2 norm')
 parser.add_argument('--num_expectation_samples', type=int, default=1,
                     help='Number of action samples for approximating the value function from the Q function.')
@@ -109,30 +109,39 @@ def work(param_server, replay_buffer, parser_args, condition):
     worker.run()
 
 
+def run_server(param_server):
+    param_server.run()
+
+
 if __name__ == '__main__':
     # os.environ['CUDA_VISIBLE_DEVICES'] = ""  # Disable CUDA
-
-    cv = mp.Condition()
+    lock = mp.Lock()
+    worker_cv = mp.Condition(lock)
+    server_cv = mp.Condition(lock)
     args = parser.parse_args()
     shared_param_server = ParameterServer(actor_lr=args.actor_lr,
                                           critic_lr=args.critic_lr,
                                           num_actions=NUM_ACTIONS,
                                           num_obs=NUM_OBSERVATIONS,
-                                          cv=cv,
+                                          worker_cv=worker_cv,
+                                          server_cv=server_cv,
                                           arg_parser=args)
 
     shared_replay_buffer = SharedReplayBuffer(capacity=args.replay_buffer_size,
                                               trajectory_length=EPISODE_LENGTH,
                                               num_actions=NUM_ACTIONS,
                                               num_obs=NUM_OBSERVATIONS,
-                                              cv=cv)
+                                              cv=worker_cv)
 
     if args.num_workers == 1:
-        work(param_server=shared_param_server, replay_buffer=shared_replay_buffer, parser_args=args, condition=cv)
+        raise ValueError
+        # work(param_server=shared_param_server, replay_buffer=shared_replay_buffer,
+        # parser_args=args, condition=worker_cv)
 
     elif args.num_workers > 1:
-        processes = [mp.Process(target=work, args=(shared_param_server, shared_replay_buffer, args, cv))
+        processes = [mp.Process(target=work, args=(shared_param_server, shared_replay_buffer, args, worker_cv))
                      for _ in range(args.num_workers)]
+        processes.append(mp.Process(target=run_server, args=(shared_param_server,)))
         for p in processes:
             p.start()
 
@@ -141,11 +150,3 @@ if __name__ == '__main__':
 
     else:
         raise ValueError("Error, the number of workers has to be positive.")
-
-
-# TODO:
-"""
-We have a bug: Even though we share the gradients of the actor and the critic, when adding gradients to them, 
-the threads are adding separate gradients. This can best be observed when setting the number of gradients to a large 
-number and uncomment the /G in the parameter server.
-"""

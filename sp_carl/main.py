@@ -90,8 +90,6 @@ if __name__ == '__main__':
 
     critic.share_memory()
 
-    print(args.batch_size)
-
     shared_replay_buffer = SharedReplayBuffer(capacity=args.replay_buffer_size,
                                               trajectory_length=EPISODE_LENGTH,
                                               num_actions=NUM_ACTIONS,
