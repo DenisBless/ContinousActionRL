@@ -17,23 +17,32 @@ parser = ArgParser()
 #                 high=np.array([1., 1., 8.]))
 # EPISODE_LENGTH = 200
 
+
+# Reacher
+NUM_ACTIONS = 3
+NUM_OBSERVATIONS = 9
+ACTION_SPACE = Box(low=np.array([-1., -1., -1.]),
+                   high=np.array([1., 1., 1.]))
+EPISODE_LENGTH = 360
+
+
 # Swimmer
-NUM_ACTIONS = 2
-NUM_OBSERVATIONS = 8
-ACTION_SPACE = Box(low=np.array([-1., -1.]),
-                   high=np.array([1., 1.]))
-OBS_SPACE = None  # observation space is unbounded
-EPISODE_LENGTH = 1000
+# NUM_ACTIONS = 2
+# NUM_OBSERVATIONS = 8
+# ACTION_SPACE = Box(low=np.array([-1., -1.]),
+#                    high=np.array([1., 1.]))
+# OBS_SPACE = None  # observation space is unbounded
+# EPISODE_LENGTH = 1000
 
 if __name__ == '__main__':
     args = parser.parse_args()
 
-    model_dir = str(pathlib.Path(__file__).resolve().parents[1]) + "/models/" + "23_06__24_07/actor_250"
+    model_dir = str(pathlib.Path(__file__).resolve().parents[1]) + "/models/" + "22_10__29_07/actor_5000"
 
-    actor = Actor(num_actions=NUM_ACTIONS, num_obs=NUM_OBSERVATIONS, log_std_init=np.log(args.init_std))#.to("cuda:0")
+    actor = Actor(num_actions=NUM_ACTIONS, num_obs=NUM_OBSERVATIONS, log_std_init=np.log(args.init_std)).to("cuda:0")
 
     actor.load_state_dict(torch.load(model_dir))
 
-    evaluator = Evaluator(actor=actor, argp=args, render=True)
+    evaluator = Evaluator(actor=actor, argp=args, render=False)
     evaluator.num_samples = 50
     evaluator.eval()

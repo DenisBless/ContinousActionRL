@@ -1,5 +1,6 @@
 import torch
 import gym
+from ALR_SF.SimulationFramework.simulation.src.gym_sf.mujoco.mujoco_envs.reach_env.reach_env import ReachEnv
 from common.replay_buffer import SharedReplayBuffer
 from torch.multiprocessing import current_process
 
@@ -23,9 +24,12 @@ class Sampler:
             self.pid = 1
 
         # self.env = gym.make("Hopper-v2")
-        self.env = gym.make("Swimmer-v2")
+        # self.env = gym.make("Swimmer-v2")
         # self.env = gym.make("Pendulum-v0")
         # self.env = gym.make("HalfCheetah-v2")
+        self.env = ReachEnv(max_steps=360, coordinates='relative',
+                            action_smoothing=False, control_timesteps=5,
+                            percentage=0.015, dt=1e-2, randomize_objects=True, render=False)
 
     def run(self):
         for i in range(self.num_samples):
@@ -36,9 +40,9 @@ class Sampler:
             while not done:
                 mean, log_std = self.actor.forward(obs)
                 action, action_log_prob = self.actor.action_sample(mean, log_std)
-                next_obs, reward, done, _ = self.env.step(action.detach().cpu())
+                next_obs, reward, done, _ = self.env.step(action.detach().cpu().numpy())
                 next_obs = torch.tensor(next_obs, dtype=torch.float)
-                reward = reward.clone().detach()
+                reward = torch.tensor(reward)#.clone().detach()
                 states.append(obs)
                 actions.append(action)
                 rewards.append(reward)

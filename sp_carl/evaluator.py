@@ -1,5 +1,7 @@
 import torch
 import gym
+from ALR_SF.SimulationFramework.simulation.src.gym_sf.mujoco.mujoco_envs.reach_env.reach_env import ReachEnv
+
 
 
 class Evaluator:
@@ -17,10 +19,13 @@ class Evaluator:
 
         self.logger = logger
 
-        self.env = gym.make("Swimmer-v2")
+        # self.env = gym.make("Swimmer-v2")
         # self.env = gym.make("Hopper-v2")
         # self.env = gym.make("Pendulum-v0")
         # self.env = gym.make("HalfCheetah-v2")
+        self.env = ReachEnv(max_steps=360, coordinates='relative',
+                            action_smoothing=False, control_timesteps=5,
+                            percentage=0.015, dt=1e-2, randomize_objects=True, render=True)
 
     def eval(self):
         r = []
@@ -32,14 +37,14 @@ class Evaluator:
             while not done:
                 mean, _ = self.actor.forward(obs)
                 mean = mean.to(self.device)
-                action, _ = self.actor.action_sample(mean, torch.ones_like(mean))
-                next_obs, reward, done, _ = self.env.step(action.detach().cpu())
+
+                action, _ = self.actor.action_sample(mean, torch.ones_like(mean) * -1e10)
+                next_obs, reward, done, _ = self.env.step(action.detach().cpu().numpy())
                 next_obs = torch.tensor(next_obs, dtype=torch.float).to(self.device)
                 rewards.append(reward)
                 obs = next_obs
                 if self.render:
                     self.env.render()
-            print(sum(rewards) / len(rewards))
             r.append(sum(rewards) / len(rewards))
 
         if self.logger is not None:
