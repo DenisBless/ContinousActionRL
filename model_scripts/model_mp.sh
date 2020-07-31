@@ -7,6 +7,6 @@ python3 ../mp_carl/main.py \
 --critic_lr=2e-4 \
 --init_std=0.2 \
 --global_gradient_norm=0.5 \
---entropy_reg=0 \
+--entropy_reg=1e-2 \
 --replay_buffer_size=2000 \
 --num_trajectories=20  \
